@@ -1,0 +1,53 @@
+# Unity – carpetas generadas (no se suben)
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Assets especiales
+/[Aa]ssets/Plugins/Editor/JetBrains*
+/[Aa]ssets/AssetStoreTools*
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# IDEs y archivos de solución generados
+.vs/
+.vscode/
+.idea/
+.gradle/
+ExportedObj/
+.consulo/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Builds
+*.apk
+*.aab
+*.unitypackage
+*.app
+crashlytics-build.properties
+sysinfo.txt
+
+# macOS
+.DS_Store
+._*

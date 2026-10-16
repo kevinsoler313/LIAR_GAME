@@ -1,0 +1,20 @@
+# Archivos de Unity como texto con saltos de línea consistentes
+* text=auto
+*.cs diff=csharp text
+*.unity text eol=lf
+*.prefab text eol=lf
+*.mat text eol=lf
+*.asset text eol=lf
+*.meta text eol=lf
+*.inputactions text eol=lf
+
+# Binarios
+*.fbx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.JPEG binary
+*.psd binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
