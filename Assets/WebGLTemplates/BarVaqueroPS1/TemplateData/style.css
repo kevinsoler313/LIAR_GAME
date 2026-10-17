@@ -1,0 +1,382 @@
+/* =========================================================
+   LIAR GAME · Plantilla WebGL "Bar Vaquero PS1" (lo-fi horror)
+   Inspirada en Buckshot Roulette: casi todo negro, una sola luz,
+   texto de terminal, grano, dithering y filtro CRT.
+   Paleta: café, negro, amarillo cafesoso y naranja.
+   ========================================================= */
+:root {
+  --negro: #050302;
+  --negro-2: #0b0705;
+  --cafe-oscuro: #1a0f0a;
+  --cafe: #3d2417;
+  --cafe-medio: #5a3620;
+  --mostaza: #c9a24a;
+  --mostaza-tenue: #8f733a;
+  --naranja: #d9661f;
+  --naranja-brillo: #ff8a3d;
+  --crema: #e6d4b3;
+  --crema-tenue: #8a7a62;
+  --papel: #cbb48a;
+  --tinta: #1e120a;
+  --sello: #8a1e08;
+
+  --fuente: "VT323", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--negro);
+  color: var(--crema);
+  font-family: var(--fuente);
+  font-size: 24px;
+  line-height: 1.2;
+  overflow-x: hidden;
+  -webkit-font-smoothing: none;
+}
+
+b { color: var(--mostaza); font-weight: 400; }
+
+canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+::selection { background: var(--naranja); color: var(--negro); }
+
+/* ---------- Grano, CRT y viñeta ---------- */
+.grano {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  z-index: 98; pointer-events: none;
+  opacity: 0.09;
+  mix-blend-mode: screen;
+}
+
+.crt {
+  position: fixed; inset: 0; z-index: 99; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.85) 100%);
+}
+.crt-on .crt {
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.85) 100%);
+  animation: parpadeo-crt 0.15s steps(2) infinite;
+}
+@keyframes parpadeo-crt { 50% { opacity: 0.9; } }
+
+.crt-toggle {
+  position: fixed; right: 12px; bottom: 12px; z-index: 101;
+  font-family: var(--fuente); font-size: 18px;
+  padding: 4px 10px;
+  color: var(--crema-tenue); background: var(--negro);
+  border: 1px solid var(--crema-tenue);
+  cursor: pointer;
+}
+.crt-toggle:hover { color: var(--naranja-brillo); border-color: var(--naranja); }
+
+/* ---------- Títulos pixelados ---------- */
+.px-titulo { margin: 0; font-family: "Rye", serif; font-weight: 400; line-height: 1; color: var(--crema); text-align: center; }
+.px-titulo canvas { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+
+/* ---------- Botones de texto, estilo terminal ---------- */
+.boton-texto {
+  font-family: var(--fuente); font-size: 24px;
+  color: var(--crema);
+  background: none; border: 0; padding: 4px 8px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.boton-texto:hover, .boton-texto:focus-visible { color: var(--negro); background: var(--crema); outline: none; }
+.boton-grande { font-size: 34px; }
+
+/* ---------- Hero ---------- */
+.hero {
+  position: relative;
+  height: 100vh; min-height: 560px;
+  display: grid; place-items: center;
+  overflow: hidden;
+  background: var(--negro);
+}
+
+.ps1-escena { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* Título y menú a la izquierda, como una pantalla de inicio: el tahúr queda libre al centro */
+.hero-contenido {
+  position: absolute;
+  left: max(16px, 6vw);
+  bottom: 14vh;
+  text-align: left;
+}
+.hero-titulo { filter: drop-shadow(0 4px 0 #000); }
+.hero-titulo canvas { margin: 0; }
+.hero-sub {
+  margin: 14px 0 30px;
+  font-size: 24px;
+  color: var(--crema-tenue);
+  text-shadow: 2px 2px 0 #000;
+}
+
+/* Menú vertical: la flecha aparece en la opción señalada */
+.menu { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.menu a {
+  position: relative;
+  font-size: 30px;
+  color: var(--crema);
+  text-decoration: none;
+  text-shadow: 2px 2px 0 #000;
+  padding: 0 10px 0 34px;
+}
+.menu a::before {
+  content: "\25B6";
+  position: absolute; left: 6px;
+  font-size: 18px; top: 7px;
+  color: var(--naranja-brillo);
+  visibility: hidden;
+}
+.menu a:hover, .menu a:focus-visible { color: var(--naranja-brillo); outline: none; }
+.menu a:hover::before, .menu a:focus-visible::before { visibility: visible; animation: parpadeo 0.6s steps(1) infinite; }
+
+@keyframes parpadeo { 50% { opacity: 0; } }
+
+.hero-pie {
+  position: absolute; bottom: 18px; left: 0; right: 0;
+  text-align: center;
+  font-size: 18px;
+  color: var(--crema-tenue);
+  margin: 0;
+}
+
+/* ---------- Secciones ---------- */
+.seccion {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 110px 16px;
+}
+.seccion-titulo { margin-bottom: 16px; }
+.intro { max-width: 640px; margin: 0 auto 40px; text-align: center; color: var(--crema-tenue); }
+
+/* ---------- Contrato ---------- */
+#contrato { display: flex; justify-content: center; }
+
+.documento {
+  position: relative;
+  width: min(100%, 680px);
+  padding: 34px 34px 30px;
+  color: var(--tinta);
+  background:
+    repeating-conic-gradient(rgba(60, 30, 10, 0.18) 0 25%, transparent 0 50%) 0 0 / 4px 4px,
+    radial-gradient(ellipse at 50% 0%, rgba(255, 220, 160, 0.35), transparent 60%),
+    radial-gradient(ellipse at center, transparent 50%, rgba(40, 20, 8, 0.7) 100%),
+    var(--papel);
+  box-shadow: 0 0 0 2px #000, 0 30px 90px rgba(217, 102, 31, 0.18);
+  transform: rotate(-0.8deg);
+}
+.doc-cabecera { margin: 0 0 6px; font-size: 18px; letter-spacing: 0.08em; opacity: 0.75; }
+.doc-titulo {
+  margin: 0 0 14px;
+  font-family: var(--fuente); font-weight: 400;
+  font-size: 40px; letter-spacing: 0.04em;
+  border-bottom: 3px double var(--tinta);
+  padding-bottom: 8px;
+}
+.doc-intro { margin: 0 0 18px; font-size: 22px; }
+.documento b { color: var(--sello); }
+
+.clausulas { margin: 0 0 26px; padding-left: 34px; font-size: 22px; }
+.clausulas li { margin-bottom: 8px; padding-left: 6px; }
+.clausulas li::marker { content: counter(list-item) ". "; }
+
+.firma {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  border-top: 2px dashed rgba(30, 18, 10, 0.5);
+  padding-top: 18px;
+}
+.firma label { font-size: 28px; }
+.firma input {
+  width: 9ch;
+  font-family: var(--fuente); font-size: 34px;
+  text-transform: uppercase; letter-spacing: 0.2em;
+  color: var(--tinta);
+  background: transparent;
+  border: 0; border-bottom: 3px solid var(--tinta);
+  padding: 0 4px;
+  caret-color: var(--sello);
+}
+.firma input:focus { outline: none; background: rgba(255, 255, 255, 0.15); }
+.firma button {
+  font-family: var(--fuente); font-size: 24px;
+  color: var(--papel); background: var(--tinta);
+  border: 0; padding: 6px 14px;
+  cursor: pointer;
+}
+.firma button:hover { background: var(--sello); }
+.firma-ayuda { flex-basis: 100%; margin: 0; font-size: 17px; opacity: 0.65; }
+
+.sello {
+  position: absolute; right: 30px; bottom: 34px;
+  margin: 0;
+  font-size: 46px; letter-spacing: 0.1em;
+  color: var(--sello);
+  border: 4px solid var(--sello);
+  padding: 2px 14px;
+  transform: rotate(-12deg);
+  opacity: 0.85;
+  animation: estampar 0.25s steps(3);
+}
+@keyframes estampar { from { transform: rotate(-12deg) scale(2.2); opacity: 0; } }
+
+/* ---------- Juego ---------- */
+.saludo { text-align: center; color: var(--crema-tenue); margin: 0 0 26px; }
+
+.marco-juego {
+  padding: 10px;
+  background: var(--negro-2);
+  border: 1px solid var(--crema-tenue);
+  box-shadow: 0 0 80px rgba(217, 102, 31, 0.1);
+}
+
+#unity-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  overflow: hidden;
+}
+#unity-canvas { display: block; width: 100%; height: 100%; background: #000; }
+
+#unity-loading {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: #000;
+}
+#unity-loading.listo { display: none; }
+.loading-texto { margin: 0; font-size: 30px; color: var(--crema); text-align: center; padding: 0 16px; }
+.loading-barra { margin: 0; font-size: 26px; color: var(--naranja-brillo); white-space: pre; }
+.parpadeo { animation: parpadeo 0.8s steps(1) infinite; }
+
+#unity-warning {
+  position: absolute; left: 50%; top: 5%; transform: translateX(-50%);
+  display: none; width: min(90%, 600px);
+}
+.aviso {
+  font-size: 20px;
+  padding: 8px 12px; margin-bottom: 6px;
+  border: 1px solid var(--crema-tenue);
+  background: #000; color: var(--crema);
+}
+.aviso-warning { border-color: var(--mostaza); color: var(--mostaza); }
+.aviso-error { border-color: var(--naranja); color: var(--naranja-brillo); }
+
+.barra-juego { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+.nombre-juego { color: var(--crema-tenue); }
+
+/* ---------- Cómo se juega ---------- */
+.mazo { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; margin: 0 auto 56px; }
+.mazo-item {
+  min-width: 190px;
+  padding: 16px 22px 14px;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(217, 102, 31, 0.14), transparent 70%),
+    #000;
+  border: 1px solid var(--crema-tenue);
+}
+.mazo-item strong {
+  display: block;
+  font-weight: 400;
+  font-size: 58px; line-height: 1;
+  color: var(--naranja-brillo);
+  text-shadow: 3px 3px 0 #000, 0 0 18px rgba(255, 138, 61, 0.35);
+}
+.mazo-item span { font-size: 19px; letter-spacing: 0.18em; color: var(--crema-tenue); }
+
+.pasos {
+  list-style: none; padding: 0; margin: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 22px;
+}
+.pasos li {
+  position: relative;
+  padding: 36px 18px 20px;
+  background: #000;
+  border: 1px solid var(--cafe-medio);
+  border-top: 2px solid var(--mostaza-tenue);
+}
+.pasos li:hover { border-color: var(--naranja); }
+.paso-num {
+  position: absolute; top: -17px; left: 14px;
+  min-width: 46px;
+  padding: 2px 8px;
+  text-align: center;
+  font-size: 26px; line-height: 1.1;
+  color: #000;
+  background: var(--naranja);
+  box-shadow: 3px 3px 0 #000;
+}
+.pasos h3 {
+  margin: 0 0 10px;
+  font-weight: 400; font-size: 28px; letter-spacing: 0.04em;
+  color: var(--mostaza);
+}
+.pasos p { margin: 0; color: var(--crema-tenue); }
+
+/* ---------- Objetos (poderes) ---------- */
+.objetos { display: flex; justify-content: center; gap: 26px; flex-wrap: wrap; margin-bottom: 26px; }
+.objeto {
+  width: 150px; height: 150px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  cursor: pointer;
+  color: var(--crema);
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(217, 102, 31, 0.18), transparent 70%),
+    var(--negro-2);
+  border: 1px solid var(--cafe-medio);
+  font-family: var(--fuente);
+}
+.objeto:hover, .objeto:focus-visible, .objeto.activo {
+  border-color: var(--naranja-brillo);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--naranja-brillo), 0 0 40px rgba(255, 138, 61, 0.25);
+}
+.objeto-icono { font-size: 56px; line-height: 1; color: var(--mostaza); }
+.objeto-nombre { font-size: 24px; letter-spacing: 0.1em; }
+
+.descripcion {
+  max-width: 640px; margin: 0 auto;
+  min-height: 130px;
+  padding: 14px 20px;
+  border: 1px solid var(--crema-tenue);
+  background: #000;
+}
+.descripcion-nombre { margin: 0 0 6px; color: var(--naranja-brillo); font-size: 28px; }
+.descripcion-texto { margin: 0; }
+
+.letra-chica { max-width: 640px; margin: 22px auto 0; font-size: 19px; color: var(--crema-tenue); }
+
+/* ---------- Victoria ---------- */
+.seccion-victoria { text-align: center; padding-top: 130px; padding-bottom: 150px; }
+.victoria-titulo { margin: 0 auto 40px; filter: drop-shadow(0 4px 0 #000); }
+
+.pie { text-align: center; padding: 22px 16px 60px; color: var(--crema-tenue); font-size: 18px; border-top: 1px solid var(--cafe-oscuro); }
+.pie p { margin: 0; }
+
+/* ---------- Móvil ---------- */
+@media (max-width: 640px) {
+  body { font-size: 21px; }
+  .seccion { padding: 80px 16px; }
+  .documento { padding: 26px 18px 24px; transform: none; }
+  .doc-titulo { font-size: 30px; }
+  .clausulas { padding-left: 26px; font-size: 20px; }
+  .sello { right: 14px; bottom: 90px; font-size: 34px; }
+  .menu a { font-size: 26px; }
+  .hero-contenido { left: 16px; right: 16px; bottom: 10vh; }
+  .hero-pie { display: none; }
+  .mazo-item { min-width: 0; flex: 1 1 90px; padding: 12px 8px; }
+  .mazo-item strong { font-size: 42px; }
+  .mazo-item span { font-size: 16px; letter-spacing: 0.08em; }
+  .objeto { width: 100px; height: 110px; }
+  .objeto-icono { font-size: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

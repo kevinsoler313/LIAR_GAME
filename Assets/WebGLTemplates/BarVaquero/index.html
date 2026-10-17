@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{{ PRODUCT_NAME }}} · El bar de los mentirosos</title>
+    <meta name="description" content="LIAR GAME: un juego de cartas boca abajo donde mentir es la única forma de ganar.">
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Special+Elite&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="TemplateData/style.css">
+  </head>
+  <body>
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="dust" aria-hidden="true"></div>
+
+    <!-- ============ HERO ============ -->
+    <header class="hero">
+      <div class="lantern lantern-left" aria-hidden="true"></div>
+      <div class="lantern lantern-right" aria-hidden="true"></div>
+
+      <p class="eyebrow">Saloon · Abierto toda la noche</p>
+      <h1 class="title">
+        <span class="title-small">El bar de los</span>
+        <span class="title-big">LIAR GAME</span>
+        <span class="title-small">mentirosos</span>
+      </h1>
+      <p class="tagline">Cartas boca abajo. Caras de póker. Aquí nadie dice la verdad&hellip; y el que se queda sin cartas, gana.</p>
+
+      <div class="hero-cards" aria-hidden="true">
+        <div class="card back tilt-l"></div>
+        <div class="card back"></div>
+        <div class="card back tilt-r"></div>
+      </div>
+
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#jugar">Sentarse a la mesa</a>
+        <a class="btn btn-ghost" href="#reglas">Leer las reglas</a>
+      </div>
+    </header>
+
+    <!-- ============ JUEGO ============ -->
+    <section id="jugar" class="section game-section">
+      <h2 class="section-title"><span>La mesa</span></h2>
+
+      <div class="game-frame">
+        <span class="nail nail-tl"></span><span class="nail nail-tr"></span>
+        <span class="nail nail-bl"></span><span class="nail nail-br"></span>
+
+        <div id="unity-container">
+          <canvas id="unity-canvas" width={{{ WIDTH }}} height={{{ HEIGHT }}} tabindex="-1"></canvas>
+
+          <div id="unity-loading">
+            <div class="loading-cards">
+              <div class="card back small"></div>
+              <div class="card back small"></div>
+              <div class="card back small"></div>
+            </div>
+            <p class="loading-text">Barajando las cartas&hellip;</p>
+            <div class="progress"><div id="unity-progress" class="progress-fill"></div></div>
+          </div>
+
+          <div id="unity-warning"></div>
+        </div>
+
+        <div class="game-bar">
+          <span class="game-name">{{{ PRODUCT_NAME }}}</span>
+          <button id="unity-fullscreen" class="btn btn-small" type="button">Pantalla completa</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CÓMO SE JUEGA ============ -->
+    <section id="reglas" class="section">
+      <h2 class="section-title"><span>Cómo se juega</span></h2>
+      <p class="section-intro">Un juego de cartas tipo escalera, con todas las cartas ocultas. Entre todos completan la escalera; cada uno intenta deshacerse de su mano.</p>
+
+      <div class="deck-strip">
+        <div class="deck-item"><strong>1 – 10</strong><span>Cartas numéricas</span></div>
+        <div class="deck-item"><strong>3</strong><span>Poderes</span></div>
+        <div class="deck-item"><strong>1</strong><span>Comodín</span></div>
+      </div>
+
+      <ol class="steps">
+        <li>
+          <span class="step-num">I</span>
+          <h3>Abre el del 1</h3>
+          <p>El jugador que tenga la carta con el número <b>1</b> la pone primero en el monto.</p>
+        </li>
+        <li>
+          <span class="step-num">II</span>
+          <h3>Turno a la derecha</h3>
+          <p>Sigue el jugador de la derecha. Desde aquí, la escalera se completa entre todos.</p>
+        </li>
+        <li>
+          <span class="step-num">III</span>
+          <h3>Boca abajo, siempre</h3>
+          <p>Nadie ve lo que tiras. Puedes jugar la carta que toca&hellip; o una que no es.</p>
+        </li>
+        <li>
+          <span class="step-num">IV</span>
+          <h3>Vacía tu mano</h3>
+          <p>Cada jugador intenta quedarse sin cartas antes que los demás.</p>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ============ MENTIROSO ============ -->
+    <section class="section liar-section">
+      <div class="poster">
+        <p class="poster-top">Se busca</p>
+        <h2 class="poster-title">¡MENTIROSO!</h2>
+        <div class="poster-body">
+          <p>Miente tirando cartas que no son. O acusa a quien crees que mintió.</p>
+          <div class="verdicts">
+            <div class="verdict">
+              <h3>Lo descubriste</h3>
+              <p>El que mintió <b>se come 3 cartas</b>.</p>
+            </div>
+            <div class="verdict">
+              <h3>Acusaste en falso</h3>
+              <p>Si no era mentira, el que acusó <b>se come 3 cartas</b>.</p>
+            </div>
+          </div>
+        </div>
+        <p class="poster-reward">Recompensa: 3 cartas</p>
+      </div>
+    </section>
+
+    <!-- ============ PODERES ============ -->
+    <section id="poderes" class="section">
+      <h2 class="section-title"><span>Los poderes</span></h2>
+      <p class="section-intro">Tres cartas que cambian el rumbo de la escalera. Pasa el cursor (o toca) para darles la vuelta.</p>
+
+      <div class="powers">
+        <button class="power" type="button" aria-label="Pass">
+          <div class="power-inner">
+            <div class="power-face power-back"><span class="card-mark">?</span></div>
+            <div class="power-face power-front">
+              <span class="power-icon">&#10140;</span>
+              <h3>Pass</h3>
+              <p>Se pone <b>boca arriba</b> al lado del monto y salta la escalera al número que el jugador decida, poniendo ese número en el monto boca abajo.</p>
+            </div>
+          </div>
+        </button>
+
+        <button class="power" type="button" aria-label="Return">
+          <div class="power-inner">
+            <div class="power-face power-back"><span class="card-mark">?</span></div>
+            <div class="power-face power-front">
+              <span class="power-icon">&#8634;</span>
+              <h3>Return</h3>
+              <p>El sentido de la escalera <b>se invierte</b> e inicia en el número que el jugador decida lanzar, boca abajo.</p>
+            </div>
+          </div>
+        </button>
+
+        <button class="power" type="button" aria-label="Brake">
+          <div class="power-inner">
+            <div class="power-face power-back"><span class="card-mark">?</span></div>
+            <div class="power-face power-front">
+              <span class="power-icon">&#8645;</span>
+              <h3>Brake</h3>
+              <p>Elige el orden de la escalera: <b>pares, impares o normal</b>. Inicia con la carta que el jugador decida siguiendo ese orden, boca abajo en el monto.</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <div class="ruling">
+        <h3>Ley del saloon</h3>
+        <p>Un poder <b>no anula</b> a un poder diferente.</p>
+        <ul>
+          <li><span class="no">&#10007;</span> Return <b>no anula</b> un Brake.</li>
+          <li><span class="yes">&#10003;</span> Return <b>sí puede anular</b> un Return.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ VICTORIA ============ -->
+    <section class="section win-section">
+      <p class="eyebrow">La única regla que importa</p>
+      <h2 class="win-title">Gana el que se queda sin cartas</h2>
+      <a class="btn btn-primary" href="#jugar">Jugar ahora</a>
+    </section>
+
+    <footer class="footer">
+      <p>{{{ PRODUCT_NAME }}} &middot; {{{ COMPANY_NAME }}} &middot; v{{{ PRODUCT_VERSION }}}</p>
+    </footer>
+
+    <script>
+      // Voltear cartas de poder al tocar (móvil)
+      document.querySelectorAll(".power").forEach(function (el) {
+        el.addEventListener("click", function () { el.classList.toggle("flipped"); });
+      });
+
+      var canvas = document.querySelector("#unity-canvas");
+      var loading = document.querySelector("#unity-loading");
+
+      function unityShowBanner(msg, type) {
+        var warningBanner = document.querySelector("#unity-warning");
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? "block" : "none";
+        }
+        var div = document.createElement("div");
+        div.innerHTML = msg;
+        div.className = "banner banner-" + (type || "info");
+        warningBanner.appendChild(div);
+        if (type != "error") {
+          setTimeout(function () {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+      var config = {
+        arguments: [],
+        dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+        frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_THREADS
+        workerUrl: buildUrl + "/{{{ WORKER_FILENAME }}}",
+#endif
+#if USE_WASM
+        codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+        symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
+#endif
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+        showBanner: unityShowBanner,
+      };
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        document.body.classList.add("is-mobile");
+      }
+
+#if BACKGROUND_FILENAME
+      canvas.style.background = "url('" + buildUrl + "/{{{ BACKGROUND_FILENAME.replace(/'/g, '%27') }}}') center / cover";
+#endif
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = function () {
+        createUnityInstance(canvas, config, function (progress) {
+          document.querySelector("#unity-progress").style.width = 100 * progress + "%";
+        }).then(function (unityInstance) {
+          loading.classList.add("done");
+          document.querySelector("#unity-fullscreen").onclick = function () {
+            unityInstance.SetFullscreen(1);
+          };
+        }).catch(function (message) {
+          unityShowBanner(message, "error");
+        });
+      };
+      script.onerror = function () {
+        document.querySelector(".loading-text").textContent = "La mesa está vacía: no se encontró el build del juego.";
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
