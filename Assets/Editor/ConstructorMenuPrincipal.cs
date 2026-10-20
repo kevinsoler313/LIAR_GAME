@@ -313,7 +313,7 @@ public static class ConstructorMenuPrincipal
         {
             { "P", "PASS", "Se pone <color=#c9a24a>boca arriba</color> al lado del monto y salta la escalera al número que el jugador decida, poniendo ese número en el monto boca abajo." },
             { "R", "RETURN", "El sentido de la escalera <color=#c9a24a>se invierte</color> e inicia en el número que el jugador decida lanzar, boca abajo." },
-            { "B", "BRAKE", "Elige el orden de la escalera: <color=#c9a24a>pares, impares o normal</color>. Inicia con la carta que el jugador decida siguiendo ese orden, boca abajo en el monto." },
+            { "B", "BREAK", "Elige el orden de la escalera: <color=#c9a24a>pares, impares o normal</color>. Inicia con la carta que el jugador decida siguiendo ese orden, boca abajo en el monto." },
         };
         for (int i = 0; i < 3; i++)
         {
@@ -346,7 +346,7 @@ public static class ConstructorMenuPrincipal
         Imagen(barra, null, naranja);
 
         Texto("Regla", caja, "Un poder <color=#c9a24a>no anula</color> a un poder diferente.", fuenteTexto, 32, texto, new Vector2(0, 55), new Vector2(900, 50));
-        Texto("No", caja, "<color=#ff8a3d><b>NO</b></color>   Return no anula un Brake.", fuenteTexto, 30, texto, new Vector2(0, -5), new Vector2(900, 46));
+        Texto("No", caja, "<color=#ff8a3d><b>NO</b></color>   Return no anula un Break.", fuenteTexto, 30, texto, new Vector2(0, -5), new Vector2(900, 46));
         Texto("Si", caja, "<color=#c9a24a><b>SÍ</b></color>   Return puede anular un Return.", fuenteTexto, 30, texto, new Vector2(0, -55), new Vector2(900, 46));
 
         var etiqueta = Texto("Etiqueta", p, "LA ÚNICA REGLA QUE IMPORTA", fuenteMaquina, 22, naranja, new Vector2(0, -70), new Vector2(900, 36));
@@ -406,7 +406,13 @@ public static class ConstructorMenuPrincipal
     static Button Boton(string nombre, Transform padre, string etiqueta, bool primario, Vector2 pos, Vector2 tam, UnityAction accion)
     {
         var rt = Nuevo(nombre, padre, pos, tam);
-        var fondo = Imagen(rt, spriteRedondeado, primario ? naranja : mostaza);
+
+        // Resplandor de farol detrás del botón; BotonAnimado lo enciende en el hover
+        var resplandor = Imagen(Estirar("Resplandor", rt, -Mathf.Max(tam.x, tam.y) * 0.35f), spriteBrillo, naranja, false);
+
+        // El fondo va en un hijo para que el resplandor quede detrás.
+        // El color de reposo va directo en la imagen; BotonAnimado lo lleva al de hover
+        var fondo = Imagen(Estirar("Fondo", rt), spriteRedondeado, primario ? naranja * 0.88f : new Color(0.055f, 0.035f, 0.02f, 0.9f));
         fondo.raycastTarget = true;
 
         if (primario)
@@ -420,28 +426,21 @@ public static class ConstructorMenuPrincipal
             Imagen(Estirar("Borde", rt), spriteBorde, mostazaTenue);
         }
 
-        Texto("Texto", rt, etiqueta, fuenteTitulos, primario ? 36 : 28, primario ? negro : mostaza, Vector2.zero, tam);
+        var textoBoton = Texto("Texto", rt, etiqueta, fuenteTitulos, primario ? 36 : 28, primario ? negro : mostaza, Vector2.zero, tam);
 
         var boton = rt.gameObject.AddComponent<Button>();
         boton.targetGraphic = fondo;
-        var colores = boton.colors;
-        if (primario)
-        {
-            colores.normalColor = new Color(0.88f, 0.88f, 0.88f);
-            colores.highlightedColor = Color.white;
-            colores.pressedColor = new Color(0.7f, 0.7f, 0.7f);
-        }
-        else
-        {
-            // el fondo es mostaza: lo oscurecemos casi a negro y al pasar el mouse se ilumina un poco
-            colores.normalColor = new Color(0.07f, 0.05f, 0.04f, 0.9f);
-            colores.highlightedColor = new Color(0.3f, 0.24f, 0.17f, 1f);
-            colores.pressedColor = new Color(0.45f, 0.36f, 0.25f, 1f);
-        }
-        colores.selectedColor = colores.normalColor;
-        colores.fadeDuration = 0.12f;
-        boton.colors = colores;
+        boton.transition = Selectable.Transition.None;   // la animación la hace BotonAnimado
         boton.navigation = new Navigation { mode = Navigation.Mode.None };
+
+        var anim = new SerializedObject(rt.gameObject.AddComponent<BotonAnimado>());
+        anim.FindProperty("fondo").objectReferenceValue = fondo;
+        anim.FindProperty("fondoHover").colorValue = primario ? naranjaBrillo : new Color(0.24f, 0.14f, 0.07f, 1f);
+        anim.FindProperty("texto").objectReferenceValue = textoBoton;
+        anim.FindProperty("textoHover").colorValue = primario ? negro : naranjaBrillo;
+        anim.FindProperty("resplandor").objectReferenceValue = resplandor;
+        anim.FindProperty("alfaResplandor").floatValue = primario ? 0.6f : 0.4f;
+        anim.ApplyModifiedPropertiesWithoutUndo();
 
         UnityEventTools.AddPersistentListener(boton.onClick, accion);
         return boton;
