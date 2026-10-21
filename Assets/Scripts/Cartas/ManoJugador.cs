@@ -45,6 +45,8 @@ public class ManoJugador : MonoBehaviour
     public bool EnMano { get; private set; }
     public bool Moviendo { get; private set; }
 
+    public int Jugador => jugador;
+
     public int IndiceSeleccionado { get; private set; }
     public CartaVisual Seleccionada => esJugadorLocal && EnMano && cartas.Count > 0 ? cartas[IndiceSeleccionado] : null;
 
@@ -88,6 +90,22 @@ public class ManoJugador : MonoBehaviour
             LugarEnMano(i, cartas.Count, out var pos, out _);
             var t = cartas[i].transform;
             t.localPosition = Vector3.Lerp(t.localPosition, pos, paso);
+        }
+    }
+
+    // La red decide en qué silla estoy: esa mano pasa a ser la mía (de frente y pegada a la cámara)
+    // y las demás vuelven a su punto frente a los ojos de su silla.
+    public void FijarLocal(bool local, Transform nuevaAncla)
+    {
+        esJugadorLocal = local;
+        ancla = nuevaAncla;
+        if (!EnMano) return;
+
+        // si las cartas ya estaban levantadas, se mudan al nuevo ancla conservando su lugar en la fila
+        foreach (var c in cartas)
+        {
+            c.transform.SetParent(ancla, false);
+            AspectoEnMano(c, local);
         }
     }
 
