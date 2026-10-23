@@ -32,4 +32,11 @@ public class MirarConMouse : MonoBehaviour
 
         transform.localRotation = Quaternion.Euler(giroVertical, giroHorizontal, 0f);
     }
+
+    // Al cambiar de silla: vuelve a mirar al frente desde la inclinación nueva
+    public void Recentrar()
+    {
+        giroVertical = transform.localEulerAngles.x;
+        giroHorizontal = 0f;
+    }
 }
