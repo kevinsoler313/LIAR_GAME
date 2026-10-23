@@ -18,3 +18,12 @@
 *.wav binary
 *.mp3 binary
 *.ogg binary
+
+# Git LFS (hay que tener instalado Git LFS: git lfs install)
+# Los .png/.jpg que ya estaban subidos siguen como binarios normales; LFS solo para las carpetas nuevas
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.glb filter=lfs diff=lfs merge=lfs -text
+Assets/Models/Personajes/**/*.png filter=lfs diff=lfs merge=lfs -text
+Assets/Models/Personajes/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+Blender/**/*.png filter=lfs diff=lfs merge=lfs -text
+Blender/**/*.jpg filter=lfs diff=lfs merge=lfs -text
