@@ -35,42 +35,56 @@ public class MazoMesa : MonoBehaviour
     void OnValidate()
     {
         // reconstruir al tocar valores en el Inspector (no se puede crear objetos dentro de OnValidate)
-#if UNITY_EDITOR
-        // solo en edición: en Play lo arma OnEnable y reconstruir a mitad de partida duplicaría cartas
-        if (Application.isPlaying) return;
-        UnityEditor.EditorApplication.delayCall += () =>
-        {
-            if (this != null && isActiveAndEnabled && !UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode) Construir();
-        };
-#endif
+        #if UNITY_EDITOR
+                // solo en edición: en Play lo arma OnEnable y reconstruir a mitad de partida duplicaría cartas
+                if (Application.isPlaying) return;
+                UnityEditor.EditorApplication.delayCall += () =>
+                {
+                    if (this != null && isActiveAndEnabled && !UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode) Construir();
+                };
+        #endif
     }
 
     [ContextMenu("Mezclar de nuevo")]
     public void Construir()
     {
-        Limpiar();
+
+
         if (baraja == null) return;
-
-        var malla = MallaCarta.Obtener(ancho, largo, grosor, radioEsquina);
-        var mazo = baraja.Mezclar();
-
-        for (int i = 0; i < mazo.Count; i++)
-        {
-            var go = new GameObject("Carta " + (i + 1) + " (" + mazo[i] + ")", typeof(MeshFilter), typeof(MeshRenderer), typeof(CartaVisual));
-            go.hideFlags = HideFlags.DontSave;   // se regenera siempre; no ensucia la escena
-            go.transform.SetParent(transform, false);
-            go.transform.localPosition = new Vector3(
-                Random.Range(-desordenPosicion, desordenPosicion),
-                grosor * (i + 0.5f),
-                Random.Range(-desordenPosicion, desordenPosicion));
-            go.transform.localRotation = Quaternion.Euler(0, Random.Range(-desordenGiro, desordenGiro), 0);
-
-            var carta = go.GetComponent<CartaVisual>();
-            carta.Configurar(mazo[i], malla, materialReverso, materialFrente, materialCanto);
-            cartas.Add(carta);
-        }
+        
+        Armar(baraja.Mezclar());
+        
     }
+    public void ConstruirOculto()
+    {
+        if (baraja == null) return;
+        int total = 0;
+        foreach (var e in baraja.cartas) total += e.copias;
+        Armar(new List<CartaDatos>(new CartaDatos[total]));   // una lista de "total" nulls
+    }
+    void Armar(List<CartaDatos> mazo)
+    {
+        Limpiar();
+            if (baraja == null) return;
 
+            var malla = MallaCarta.Obtener(ancho, largo, grosor, radioEsquina);
+
+            for (int i = 0; i < mazo.Count; i++)
+            {
+                var go = new GameObject("Carta " + (i + 1) + " (" + mazo[i] + ")", typeof(MeshFilter), typeof(MeshRenderer), typeof(CartaVisual));
+                go.hideFlags = HideFlags.DontSave;   // se regenera siempre; no ensucia la escena
+                go.transform.SetParent(transform, false);
+                go.transform.localPosition = new Vector3(
+                    Random.Range(-desordenPosicion, desordenPosicion),
+                    grosor * (i + 0.5f),
+                    Random.Range(-desordenPosicion, desordenPosicion));
+                go.transform.localRotation = Quaternion.Euler(0, Random.Range(-desordenGiro, desordenGiro), 0);
+
+                var carta = go.GetComponent<CartaVisual>();
+                carta.Configurar(mazo[i], malla, materialReverso, materialFrente, materialCanto);
+                cartas.Add(carta);
+            }
+    }
     // Saca la carta de arriba (para repartir más adelante)
     public CartaVisual Robar()
     {

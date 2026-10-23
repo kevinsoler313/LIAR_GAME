@@ -24,7 +24,7 @@ public class Repartidor : MonoBehaviour
     [SerializeField] float desordenGiroPila = 6f;
 
     public UnityEvent alTerminar;
-
+    public UnityEvent antesDeTerminar;
     readonly List<CartaVisual>[] cartasEnMano = { new List<CartaVisual>(), new List<CartaVisual>(), new List<CartaVisual>(), new List<CartaVisual>() };
     public bool Repartiendo { get; private set; }
 
@@ -80,6 +80,7 @@ public class Repartidor : MonoBehaviour
 
         foreach (var v in vuelos) yield return v;   // esperar a que aterricen las últimas
         Repartiendo = false;
+        antesDeTerminar.Invoke();
         alTerminar.Invoke();
     }
 
@@ -114,4 +115,5 @@ public class Repartidor : MonoBehaviour
         t.localPosition = hasta;
         t.localRotation = giroHasta;
     }
+    public void FijarActivos(bool[] nuevos) => activos = nuevos;
 }
