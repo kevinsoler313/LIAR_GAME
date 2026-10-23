@@ -31,4 +31,14 @@ public class CartaVisual : MonoBehaviour
             transform.localRotation = Quaternion.Euler(e.x, e.y, value ? 180f : 0f);
         }
     }
+    public void Revelar(CartaDatos datos){
+        Datos=datos;
+        var render = GetComponent<MeshRenderer>();
+        var bloque = new MaterialPropertyBlock();
+        render.GetPropertyBlock(bloque,1);
+        if(datos!=null && datos.frente != null){
+            bloque.SetTexture(idBaseMap,datos.frente.texture);
+        }
+        render.SetPropertyBlock(bloque,1);
+    }
 }
