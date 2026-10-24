@@ -48,6 +48,14 @@ public class Repartidor : MonoBehaviour
     public void RecogerYRepartir()
     {
         if (!Application.isPlaying || Repartiendo) return;
+        Recoger();
+        mazo.Construir();
+        Repartir();
+    }
+
+    // Destruye las cartas de la partida anterior: las que repartió y las de las dos pilas de la mesa
+    public void Recoger()
+    {
         for (int j = 0; j < cartasEnMano.Length; j++)
         {
             foreach (var c in cartasEnMano[j]) if (c != null) Destroy(c.gameObject);
@@ -55,8 +63,6 @@ public class Repartidor : MonoBehaviour
         }
         if (monto != null) monto.Recoger();
         if (montoPoderes != null) montoPoderes.Recoger();
-        mazo.Construir();
-        Repartir();
     }
 
     IEnumerator RutinaRepartir()

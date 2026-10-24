@@ -31,10 +31,24 @@ public class Monto : MonoBehaviour
         StartCoroutine(Volar(carta, cartas.Count - 1));
     }
 
+    readonly HashSet<CartaVisual> enElAire = new HashSet<CartaVisual>();
+    readonly HashSet<CartaVisual> porVoltear = new HashSet<CartaVisual>();
+
+    // Pone boca arriba una carta del monto (la acusada en un "¡Mentiroso!").
+    // Si todavía va volando, se voltea apenas aterrice.
+    public void Voltear(CartaVisual carta)
+    {
+        if (carta == null || !cartas.Contains(carta)) return;
+        porVoltear.Add(carta);
+        if (!enElAire.Contains(carta)) carta.BocaArriba = true;
+    }
+
     // Quita todas las cartas del monto (para un reparto nuevo)
     public void Recoger()
     {
         StopAllCoroutines();
+        enElAire.Clear();
+        porVoltear.Clear();
         foreach (var c in cartas) if (c != null) Destroy(c.gameObject);
         cartas.Clear();
     }
@@ -43,6 +57,7 @@ public class Monto : MonoBehaviour
     {
         var t = carta.transform;
         t.SetParent(transform, true);
+        enElAire.Add(carta);
 
         Vector3 desde = t.localPosition;
         Quaternion giroDesde = t.localRotation;
@@ -68,6 +83,8 @@ public class Monto : MonoBehaviour
         t.localPosition = hasta;
         t.localRotation = giroHasta;
         t.localScale = Vector3.one;
+        enElAire.Remove(carta);
+        if (porVoltear.Contains(carta)) carta.BocaArriba = true;
 
         alRecibir.Invoke(carta);
     }

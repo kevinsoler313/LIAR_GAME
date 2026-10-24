@@ -404,6 +404,32 @@ b { color: var(--mustard); font-weight: 600; }
 }
 .steps p { margin: 0; color: var(--text-dim); }
 
+/* ---------- Controles ---------- */
+.controls-label { margin-top: 3.4rem; }
+.controls {
+  list-style: none; padding: 0; margin: 0 auto;
+  max-width: 640px;
+  display: grid; gap: 0.7rem;
+}
+.controls li {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  padding: 0.7rem 1.1rem;
+  border: 1px solid var(--brown-mid);
+  background: rgba(36, 21, 16, 0.6);
+  border-radius: 4px;
+}
+.controls li > span:last-child { color: var(--text-dim); }
+.keys { display: flex; align-items: center; gap: 0.4rem; color: var(--text-dim); white-space: nowrap; }
+.controls kbd {
+  font-family: var(--font-type); font-size: 0.85rem;
+  padding: 0.3em 0.7em;
+  color: var(--black);
+  background: linear-gradient(180deg, var(--paper), var(--paper-dark));
+  border-radius: 4px;
+  box-shadow: 0 3px 0 var(--brown), 0 4px 8px rgba(0, 0, 0, 0.6);
+}
+.controls-note { max-width: 640px; margin: 1.2rem auto 0; text-align: center; font-size: 0.95rem; color: var(--text-dim); }
+
 /* ---------- Póster Se Busca ---------- */
 .liar-section { display: flex; justify-content: center; }
 
@@ -550,6 +576,42 @@ b { color: var(--mustard); font-weight: 600; }
 }
 .ruling .no { color: var(--orange-glow); }
 .ruling .yes { color: var(--mustard); }
+
+/* ---------- Habilidades y estrategias ---------- */
+.sub-label {
+  font-family: var(--font-type); font-weight: 400;
+  text-transform: uppercase; letter-spacing: 0.35em;
+  font-size: 0.85rem;
+  color: var(--orange);
+  text-align: center;
+  margin: 0 0 1.4rem;
+}
+
+.skills {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;
+  margin: 0 auto 3.4rem;
+}
+.skill {
+  padding: 1rem 1.2rem;
+  text-align: center;
+  border: 1px solid var(--brown-light);
+  background: rgba(36, 21, 16, 0.6);
+  border-radius: 6px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.skill:hover { border-color: var(--mustard-dim); box-shadow: 0 0 30px rgba(217, 102, 31, 0.15); }
+.skill strong {
+  display: block;
+  font-family: var(--font-display); font-weight: 400;
+  font-size: 1.5rem; line-height: 1.2;
+  color: var(--orange);
+}
+.skill span { font-size: 1rem; color: var(--text-dim); }
+
+.steps-3 { grid-template-columns: repeat(3, 1fr); row-gap: 2.4rem; }
+@media (max-width: 900px) {
+  .steps-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+}
 
 /* ---------- Victoria ---------- */
 .win-section {

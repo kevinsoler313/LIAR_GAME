@@ -319,6 +319,31 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 }
 .pasos p { margin: 0; color: var(--crema-tenue); }
 
+/* ---------- Controles ---------- */
+.controles-titulo { margin-top: 64px; }
+.controles {
+  list-style: none; padding: 0; margin: 0 auto;
+  max-width: 640px;
+  display: grid; gap: 10px;
+}
+.controles li {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 10px 16px;
+  background: #000;
+  border: 1px solid var(--cafe-medio);
+}
+.controles li:hover { border-color: var(--naranja); }
+.controles li > span:last-child { color: var(--crema-tenue); }
+.teclas { display: flex; align-items: center; gap: 6px; color: var(--crema-tenue); white-space: nowrap; }
+.controles kbd {
+  font-family: var(--fuente); font-size: 22px; line-height: 1;
+  padding: 4px 10px;
+  color: var(--negro);
+  background: var(--mostaza);
+  box-shadow: 3px 3px 0 #000;
+}
+.controles-nota { text-align: center; }
+
 /* ---------- Objetos (poderes) ---------- */
 .objetos { display: flex; justify-content: center; gap: 26px; flex-wrap: wrap; margin-bottom: 26px; }
 .objeto {
@@ -351,6 +376,41 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 .descripcion-texto { margin: 0; }
 
 .letra-chica { max-width: 640px; margin: 22px auto 0; font-size: 19px; color: var(--crema-tenue); }
+
+/* ---------- Habilidades y estrategias ---------- */
+.sub-titulo {
+  margin: 0 0 22px;
+  text-align: center;
+  font-weight: 400; font-size: 26px; letter-spacing: 0.3em;
+  color: var(--crema-tenue);
+}
+.sub-titulo::before, .sub-titulo::after { content: " — "; color: var(--mostaza-tenue); }
+
+.habilidades {
+  list-style: none; padding: 0; margin: 0 auto 64px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;
+}
+.habilidades li {
+  padding: 14px 16px 12px;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(217, 102, 31, 0.14), transparent 70%),
+    #000;
+  border: 1px solid var(--crema-tenue);
+}
+.habilidades li:hover { border-color: var(--naranja); }
+.habilidades strong {
+  display: block;
+  font-weight: 400; font-size: 30px; letter-spacing: 0.08em;
+  color: var(--naranja-brillo);
+  text-shadow: 2px 2px 0 #000;
+}
+.habilidades span { font-size: 20px; color: var(--crema-tenue); }
+
+.pasos-tres { grid-template-columns: repeat(3, 1fr); row-gap: 34px; }
+@media (max-width: 900px) {
+  .pasos-tres { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+}
 
 /* ---------- Victoria ---------- */
 .seccion-victoria { text-align: center; padding-top: 130px; padding-bottom: 150px; }

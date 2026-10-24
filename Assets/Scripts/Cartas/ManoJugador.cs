@@ -52,6 +52,15 @@ public class ManoJugador : MonoBehaviour
 
     Material frenteMesa;   // material original del frente, para devolverlo al bajar las cartas
 
+    // ---------- Red ----------
+    // Si alguien llena esto (PartidaRed lo hace al conectarse), al presionar E la carta NO se juega aquí:
+    // se le pide al host con este método, y se queda "pendiente" hasta que el host responda.
+    // Si está vacío (sin red), la carta se juega directo como siempre.
+    public System.Action<CartaVisual, int> pedirAlHost;
+
+    // La carta que pedí jugar y el host todavía no confirmó (null = ninguna)
+    public CartaVisual Pendiente { get; private set; }
+
     void OnEnable() { if (repartidor != null) repartidor.alTerminar.AddListener(RecibirReparto); }
     void OnDisable() { if (repartidor != null) repartidor.alTerminar.RemoveListener(RecibirReparto); }
 
@@ -63,13 +72,21 @@ public class ManoJugador : MonoBehaviour
         EnMano = false;
         cartas.Clear();
         IndiceSeleccionado = 0;
+        Pendiente = null;
         Levantar();
     }
 
     void Update()
     {
-        if (!esJugadorLocal || Moviendo || cartas.Count == 0 || Keyboard.current == null) return;
-        if (SelectorOpciones.BloqueaEntrada) return;   // eligiendo la opción de un poder
+        if (Moviendo || cartas.Count == 0) return;
+        if (esJugadorLocal) LeerTeclado();
+        if (EnMano) Acomodar();
+    }
+
+    // Solo en la mano de este equipo: flechas para elegir, E para tirar, Espacio para bajar/levantar
+    void LeerTeclado()
+    {
+        if (Keyboard.current == null || SelectorOpciones.BloqueaEntrada) return;   // eligiendo la opción de un poder
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
             if (EnMano) Bajar();
@@ -81,12 +98,16 @@ public class ManoJugador : MonoBehaviour
         if (Keyboard.current.rightArrowKey.wasPressedThisFrame) Seleccionar(IndiceSeleccionado + 1);
         if (Keyboard.current.leftArrowKey.wasPressedThisFrame) Seleccionar(IndiceSeleccionado - 1);
         if (Keyboard.current.eKey.wasPressedThisFrame) JugarSeleccionada();
-        if (cartas.Count == 0) return;
+    }
 
-        // cada carta se acomoda suave hacia su lugar: la seleccionada arriba y al frente
+    // Cada carta se acomoda suave hacia su lugar (la seleccionada arriba y al frente).
+    // Corre en TODAS las manos: así, cuando otro jugador tira o come cartas, su fila también se reacomoda.
+    void Acomodar()
+    {
         float paso = 1f - Mathf.Exp(-velocidadSeleccion * Time.deltaTime);
         for (int i = 0; i < cartas.Count; i++)
         {
+            if (volando.Contains(cartas[i])) continue;   // esa todavía viene en camino desde el mazo
             LugarEnMano(i, cartas.Count, out var pos, out _);
             var t = cartas[i].transform;
             t.localPosition = Vector3.Lerp(t.localPosition, pos, paso);
@@ -116,11 +137,36 @@ public class ManoJugador : MonoBehaviour
     public void JugarSeleccionada()
     {
         var carta = Seleccionada;
-        if (carta == null || Moviendo) return;
+        if (carta == null || Moviendo || Pendiente != null) return;
 
         bool esPoder = carta.Datos != null && carta.Datos.EsPoder;
+
+        // En red: primero se pregunta la opción del poder (si hace falta) y luego se le pide al host
+        if (pedirAlHost != null)
+        {
+            if (esPoder && reglas != null) reglas.Preguntar(carta.Datos.tipo, opcion => PedirJugada(carta, opcion));
+            else PedirJugada(carta, -1);
+            return;
+        }
+
         if (esPoder && reglas != null) reglas.Pedir(carta.Datos.tipo, () => Enviar(carta, montoPoderes));
         else Enviar(carta, esPoder ? montoPoderes : monto);
+    }
+
+    void PedirJugada(CartaVisual carta, int opcion)
+    {
+        Pendiente = carta;
+        pedirAlHost(carta, opcion);
+    }
+
+    // El host no aceptó la jugada: la carta sigue en la mano y se puede intentar otra
+    public void CancelarPendiente() => Pendiente = null;
+
+    // El host confirmó la jugada (llega en TODOS los equipos): la carta va a la mesa
+    public void JugarCarta(CartaVisual carta, bool esPoder)
+    {
+        if (carta == Pendiente) Pendiente = null;
+        Enviar(carta, esPoder ? montoPoderes : monto);
     }
 
     void Enviar(CartaVisual carta, Monto destino)
@@ -132,6 +178,47 @@ public class ManoJugador : MonoBehaviour
         Seleccionar(IndiceSeleccionado);   // queda seleccionada la vecina (la de la derecha, o la última)
         AspectoEnMano(carta, false);       // sobre la mesa vuelve a verse como las demás
         destino.Jugar(carta);
+
+        // Una carta al monto cuenta como el número que tocaba: la escalera avanza YA (no cuando la carta aterriza),
+        // así el host siempre sabe qué número toca aunque la animación todavía no termine.
+        if (destino == monto && reglas != null) reglas.Estado.Avanzar();
+    }
+
+    // ---------- Comer cartas (castigo del "¡Mentiroso!") ----------
+
+    readonly HashSet<CartaVisual> volando = new HashSet<CartaVisual>();
+
+    // Una carta nueva (sacada del mazo) entra a la mano volando hasta su lugar en la fila
+    public void Agregar(CartaVisual carta)
+    {
+        if (carta == null) return;
+        var seleccionada = Seleccionada;
+
+        cartas.Add(carta);
+        if (ordenar && esJugadorLocal) cartas.Sort((a, b) => Orden(a.Datos).CompareTo(Orden(b.Datos)));
+        if (seleccionada != null) IndiceSeleccionado = cartas.IndexOf(seleccionada);   // sigue elegida la misma carta
+
+        StartCoroutine(VolarNueva(carta));
+    }
+
+    IEnumerator VolarNueva(CartaVisual carta)
+    {
+        volando.Add(carta);
+        yield return Volar(carta, cartas.IndexOf(carta), EnMano);
+        volando.Remove(carta);
+    }
+
+    // Antes de un reparto nuevo: destruye las cartas que quedaron en la mano (incluidas las que se comió)
+    public void Vaciar()
+    {
+        StopAllCoroutines();
+        foreach (var c in cartas) if (c != null) Destroy(c.gameObject);
+        cartas.Clear();
+        volando.Clear();
+        Moviendo = false;
+        EnMano = false;
+        IndiceSeleccionado = 0;
+        Pendiente = null;
     }
 
     // Toma la pila de la mesa (justo después del reparto) o las cartas bajadas, y las pone en la mano
