@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 // Los 4 personajes animados, uno por silla y en el mismo orden que SillasRed (Puesto_0..3).
 // No cambia nada de la partida: solo mira lo que pasa y lo actúa.
-//  - Animación: Esperar o MiTurno según el turno de PartidaRed, Ganar si ganó la partida,
+//  - Animación: Descansar sin cartas (manos en la mesa), Esperar con cartas, MiTurno en su turno, Ganar si ganó,
 //    Jugar cuando le sale una carta de la mano, Comer cuando le entran cartas (castigo) y Acusar si gritó "¡Mentiroso!".
 //  - Cartas: el ancla "Mano en mano" de cada silla sigue la mano del personaje, así las cartas del juego quedan en sus manos.
 //  - Mirada: gira la cabeza hacia quien juega, hacia el monto cuando cae una carta y hacia el acusado.
@@ -15,6 +15,7 @@ public class PersonajesEnSillas : MonoBehaviour
     [SerializeField] GameObject[] personajes;       // mallas de Puesto_0..3: MujerS, MujerC, Inseguro, Viejo
     [SerializeField] Animator[] animadores;
     [SerializeField] Transform[] cabezas;           // hueso "head" de cada uno
+    [SerializeField] Light[] lucesCara;             // luz chica frente a cada cara (el ala del sombrero la dejaba en negro)
     [SerializeField] Transform[] manosIzquierdas;   // hueso "hand.L": la que sostiene las cartas
     [SerializeField] Transform[] puestos;           // PUESTOS/Puesto_0..3 (su +Z mira al centro de la mesa)
     [SerializeField] Transform[] anclasCartas;      // Puesto_0..3/Ojos/Mano en mano: ahí arma ManoJugador la fila de cada silla
@@ -36,6 +37,7 @@ public class PersonajesEnSillas : MonoBehaviour
     [SerializeField] float segundosAcusacion = 3f;
 
     static readonly int miTurno = Animator.StringToHash("MiTurno");
+    static readonly int conCartas = Animator.StringToHash("ConCartas");
     static readonly int gano = Animator.StringToHash("Gano");
     static readonly int jugar = Animator.StringToHash("Jugar");
     static readonly int comer = Animator.StringToHash("Comer");
@@ -115,14 +117,18 @@ public class PersonajesEnSillas : MonoBehaviour
             }
             else if (cartasAntes[i] > 0 && ahora > cartasAntes[i]) animador.SetTrigger(comer);
             cartasAntes[i] = ahora;
+            animador.SetBool(conCartas, ahora > 0);   // sin cartas (antes de repartir o silla vacía): manos en la mesa
         }
 
         if (local != sillaOculta)
         {
             sillaOculta = local;
             for (int i = 0; i < Cantidad; i++)
+            {
                 foreach (var malla in mallas[i])
                     malla.shadowCastingMode = i == local ? ShadowCastingMode.ShadowsOnly : ShadowCastingMode.On;
+                EncenderLuz(i, local);
+            }
         }
     }
 
@@ -131,6 +137,14 @@ public class PersonajesEnSillas : MonoBehaviour
         if (visibles[i] == visible) return;
         visibles[i] = visible;
         foreach (var malla in mallas[i]) malla.enabled = visible;
+        EncenderLuz(i, sillaOculta);
+    }
+
+    // la del personaje de mi silla se apaga: la cámara está en su cabeza y me alumbraría las cartas
+    void EncenderLuz(int i, int local)
+    {
+        if (lucesCara != null && i < lucesCara.Length && lucesCara[i] != null)
+            lucesCara[i].enabled = visibles[i] && i != local;
     }
 
     // Después del Animator: las cartas siguen la mano y la cabeza se gira hacia lo que pasa en la mesa
