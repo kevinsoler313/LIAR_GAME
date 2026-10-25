@@ -27,7 +27,7 @@ public class PersonajesEnSillas : MonoBehaviour
     [SerializeField] Transform monto;
 
     [Header("Ajustes")]
-    [SerializeField] bool ocultarSillasVacias = true;   // conectado: solo se ven los personajes de las sillas ocupadas
+    [SerializeField] bool ocultarSillasVacias = false;  // true: conectado, solo se ven los personajes de las sillas ocupadas
     [SerializeField] Vector3 cartasDesdeMano = new Vector3(0.14f, 0.05f, 0.05f);   // (derecha, arriba, adelante) del puesto
     [SerializeField] float velocidadCartas = 12f;
     [SerializeField] float giroCabezaMax = 55f;
