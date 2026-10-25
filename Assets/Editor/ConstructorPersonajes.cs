@@ -85,6 +85,7 @@ public static class ConstructorPersonajes
             material.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(carpeta + "/Texturas/" + nombre + ".png"));
             material.SetColor("_BaseColor", Color.white);
             material.SetFloat("_Smoothness", 0.15f);
+            AsignarNormal(material, carpeta + "/Texturas/" + nombre + "_normal.png");
             EditorUtility.SetDirty(material);
             importador.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), nombre), material);
         }
@@ -97,6 +98,22 @@ public static class ConstructorPersonajes
         }
         importador.clipAnimations = clips.Take(1).ToArray();
         importador.SaveAndReimport();
+    }
+
+    // Los modelos de Tripo traen normal map: se importa como "Normal map" y va en _BumpMap
+    public static void AsignarNormal(Material material, string rutaNormal)
+    {
+        var importador = AssetImporter.GetAtPath(rutaNormal) as TextureImporter;
+        if (importador == null) return;
+        if (importador.textureType != TextureImporterType.NormalMap)
+        {
+            importador.textureType = TextureImporterType.NormalMap;
+            importador.SaveAndReimport();
+        }
+        material.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(rutaNormal));
+        material.SetFloat("_BumpScale", 1f);
+        material.EnableKeyword("_NORMALMAP");
+        EditorUtility.SetDirty(material);
     }
 
     static AnimatorController CrearControlador()
