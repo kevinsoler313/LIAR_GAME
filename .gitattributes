@@ -25,5 +25,6 @@
 *.glb filter=lfs diff=lfs merge=lfs -text
 Assets/Models/Personajes/**/*.png filter=lfs diff=lfs merge=lfs -text
 Assets/Models/Personajes/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+Assets/Models/Personajes/**/*.fbx filter=lfs diff=lfs merge=lfs -text
 Blender/**/*.png filter=lfs diff=lfs merge=lfs -text
 Blender/**/*.jpg filter=lfs diff=lfs merge=lfs -text
