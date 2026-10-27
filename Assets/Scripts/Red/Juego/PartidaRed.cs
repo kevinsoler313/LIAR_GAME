@@ -37,7 +37,7 @@ public class PartidaRed : MonoBehaviour
     [SerializeField] EstadoPartida estado;         // la escalera
     [SerializeField] AvisoPoder aviso;             // carteles: rechazos y resultado de las acusaciones
     [SerializeField] Monto montoCentro;            // el monto boca abajo (para voltear la carta acusada)
-
+    [SerializeField] DatosCastigo datosCastigo;
     [Header("Reglas")]
     [SerializeField] int cartasCastigo = 3;        // las que se come quien pierde una acusación
     [SerializeField] float segundosParaAcusar = 5f;   // tiempo para acusar a quien se quedó sin cartas
@@ -68,7 +68,7 @@ public class PartidaRed : MonoBehaviour
     readonly List<int> montoIds = new List<int>();   // las cartas reales del monto, en orden
     readonly List<int> mazoIds = new List<int>();    // lo que quedó en el mazo después de repartir (de aquí se come)
     bool[] ocupadasPartida = new bool[MesaRed.CantidadSillas];
-
+    bool esPoder = false;
     int cartaAcusable = -1;      // id real de la última carta del monto
     int esperadoAcusable;        // el número que tocaba cuando se tiró
     int posibleGanador = -1;     // silla que se quedó sin cartas y espera a ver si la acusan
@@ -86,6 +86,7 @@ public class PartidaRed : MonoBehaviour
         red.Escuchar(TiposJuego.Acusar, AlPedirAcusacion, Origen.Cualquiera);  // cualquiera acusa; el host juzga
         red.Escuchar(TiposJuego.Acusacion, AlRecibirAcusacion, Origen.Host);
         red.Escuchar(TiposJuego.Comer, AlRecibirComer, Origen.Host);
+        red.Escuchar(TiposJuego.Castigo, AlRecibirCastigo, Origen.Host);
         red.AlConectarse += AlConectarse;
         red.AlDesconectarse += AlDesconectarse;
     }
@@ -100,6 +101,7 @@ public class PartidaRed : MonoBehaviour
         red.DejarDeEscuchar(TiposJuego.Acusar, AlPedirAcusacion);
         red.DejarDeEscuchar(TiposJuego.Acusacion, AlRecibirAcusacion);
         red.DejarDeEscuchar(TiposJuego.Comer, AlRecibirComer);
+        red.DejarDeEscuchar(TiposJuego.Castigo, AlRecibirCastigo);
         red.AlConectarse -= AlConectarse;
         red.AlDesconectarse -= AlDesconectarse;
     }
@@ -145,7 +147,7 @@ public class PartidaRed : MonoBehaviour
         montoIds.Clear();
         cartaAcusable = -1;
         posibleGanador = -1;
-
+        esPoder = false;
         // Igual que tu Repartidor: una carta a cada silla ocupada, ronda por ronda, sacando la de arriba
         for (int ronda = 0; ronda < cartasPorJugador; ronda++)
             for (int s = 0; s < MesaRed.CantidadSillas; s++)
@@ -222,6 +224,12 @@ public class PartidaRed : MonoBehaviour
         var pedido = m.Leer<DatosJugar>();
 
         string error = ValidarJugada(silla, pedido);
+        if (error == NoGanarConPoder)
+        {
+            // Quiso ganar con un poder: no se juega la carta y se come cartas del mazo (el turno sigue siendo suyo)
+            Castigado(silla);
+            return;
+        }
         if (error != null)
         {
             red.EnviarA(m.de, TiposJuego.Rechazo, new DatosRechazo { motivo = error });
@@ -230,25 +238,19 @@ public class PartidaRed : MonoBehaviour
 
         bool poder = baraja.PorId(pedido.carta).EsPoder;
         manosIds[silla].Remove(pedido.carta);
-
+        esPoder = true;
         if (!poder)
         {
             // Lo que se podrá revisar si alguien grita "¡Mentiroso!": la carta real y el número que tocaba
             montoIds.Add(pedido.carta);
             cartaAcusable = pedido.carta;
             esperadoAcusable = estado.Numero;   // la escalera todavía no avanzó: es el número que tocaba
+            esPoder = false;
         }
 
         bool sinCartas = manosIds[silla].Count == 0;
         int turno;
-        if (sinCartas && !poder)
-        {
-            // Se quedó sin cartas con una carta al monto: gana si nadie lo acusa a tiempo
-            posibleGanador = silla;
-            finEspera = Time.time + segundosParaAcusar;
-            turno = -1;
-        }
-        else if (sinCartas) turno = -1;          // su última carta fue un poder: gana ya (no hay nada que acusar)
+        if (sinCartas) turno = -1;               // se quedó sin cartas: gana ya (nadie tiene que acusarlo)
         else if (poder) turno = silla;           // un poder no gasta el turno: ahora tira su carta al monto
         else turno = Siguiente(silla);           // turno a la derecha
 
@@ -263,7 +265,9 @@ public class PartidaRed : MonoBehaviour
         AplicarJugada(jugada);                    // primero en el host…
         red.EnviarATodos(TiposJuego.Jugada, jugada);   // …y después en los demás
 
-        if (sinCartas && poder) Terminar(silla);
+        // Sin cartas = gana en el acto. Primero todos ven caer su última carta (la jugada de arriba)
+        // y enseguida llega el "juego.estado" con el ganador.
+        if (sinCartas) Terminar(silla);
     }
 
     // Devuelve el motivo si la jugada NO se puede hacer, o null si está bien
@@ -277,7 +281,69 @@ public class PartidaRed : MonoBehaviour
 
         var datos = baraja.PorId(pedido.carta);
         if (datos.EsPoder && !reglas.OpcionValida(datos.tipo, pedido.opcion)) return "Opción no válida para " + datos;
+        if(esPoder && datos.EsPoder){
+            return "Ya tiraste otro poder en este turno";
+        }
+        if(datos.EsPoder){
+            int normales = 0;
+            int castigado = silla;
+            foreach(int id in manosIds[silla]){
+                if(!baraja.PorId(id).EsPoder){
+                    normales++;
+                }
+            }
+            if (normales == 0){ 
+                
+                return NoGanarConPoder;
+            }
+
+        }
         return null;
+    }
+    // El mismo texto que devuelve ValidarJugada: así AlPedirJugada reconoce este caso
+    const string NoGanarConPoder = "No puedes ganar con un poder";
+
+    // HOST: quiso ganar con un poder (no le quedan cartas normales). Se come cartas del mazo.
+    void Castigado(int silla){
+        var castigado = silla;
+
+        // 1) Se come las de arriba del mazo (las mismas que va a sacar el mazo de la mesa)
+        var comidas = new List<int>();
+        while (comidas.Count < cartasCastigo && mazoIds.Count > 0)
+        {
+            int arriba = mazoIds.Count - 1;
+            comidas.Add(mazoIds[arriba]);
+            mazoIds.RemoveAt(arriba);
+        }
+        manosIds[castigado].AddRange(comidas);
+        Debug.Log("[PartidaRed] Castigo a la silla " + castigado + ". Su mano: " + string.Join(",", manosIds[castigado]));
+
+        // 2) Cuáles son: en privado al castigado (el host, si es él, ya las tiene aquí)
+        if (castigado == MiSilla) misComidas = comidas.ToArray();
+        else red.EnviarA(mesa.IdEnSilla(castigado), TiposJuego.Comer, new DatosComer { cartas = comidas.ToArray() });
+
+        // 3) Que todos lo vean: primero en el host y después en los demás
+        var d = new DatosCastigo { silla = castigado, cantidad = comidas.Count };
+        AplicarCastigo(d);
+        red.EnviarATodos(TiposJuego.Castigo, d);
+    }
+
+    // LOS DEMÁS equipos (el host ya lo aplicó)
+    void AlRecibirCastigo(Mensaje m)
+    {
+        if (red.EsHost) return;
+        AplicarCastigo(m.Leer<DatosCastigo>());
+    }
+
+    // TODOS: el poder vuelve a quedar libre en la mano, sale el cartel y el castigado saca cartas del mazo
+    void AplicarCastigo(DatosCastigo d)
+    {
+        manos[d.silla].CancelarPendiente();   // el poder que quiso tirar no se juega: se puede volver a elegir
+
+        string quien = d.silla == MiSilla ? "Quisiste" : Nombre(d.silla) + " quiso";
+        aviso.Mostrar("¡CASTIGO!", quien + " ganar con un poder. " + SeCome(d.silla, d.cantidad));
+
+        DarCartas(d.silla, d.cantidad);
     }
 
     // 3) TODOS (los demás equipos; el host ya lo aplicó)
@@ -426,13 +492,20 @@ public class PartidaRed : MonoBehaviour
         if (d.mentira) aviso.Mostrar("¡MENTIROSO!", era + " Tocaba el " + d.esperado + ". " + SeCome(d.castigado, d.cantidad));
         else aviso.Mostrar("¡ERA VERDAD!", era + " " + SeCome(d.castigado, d.cantidad));
 
-        // El castigado saca cartas del mazo de la mesa. Solo él ve cuáles son.
-        var mano = manos[d.castigado];
-        for (int i = 0; i < d.cantidad; i++)
+        DarCartas(d.castigado, d.cantidad);
+    }
+
+    // El castigado saca cartas del mazo de la mesa y le vuelan a la mano. Solo él ve cuáles son
+    // (sus ids le llegaron antes, en privado, con el mensaje "juego.comer").
+    // Lo usan el "¡Mentiroso!" y el castigo por querer ganar con un poder.
+    void DarCartas(int silla, int cantidad)
+    {
+        var mano = manos[silla];
+        for (int i = 0; i < cantidad; i++)
         {
             var carta = mazoMesa.Robar();
             if (carta == null) break;
-            if (d.castigado == MiSilla && misComidas != null && i < misComidas.Length)
+            if (silla == MiSilla && misComidas != null && i < misComidas.Length)
                 carta.Revelar(baraja.PorId(misComidas[i]));
             mano.Agregar(carta);
         }
