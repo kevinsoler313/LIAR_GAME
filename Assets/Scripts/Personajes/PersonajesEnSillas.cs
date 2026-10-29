@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 //  - Animación: Descansar sin cartas (manos en la mesa), Esperar con cartas, MiTurno en su turno, Ganar si ganó,
 //    Jugar cuando le sale una carta de la mano, Comer cuando le entran cartas (castigo) y Acusar si gritó "¡Mentiroso!".
 //  - Cartas: el ancla "Mano en mano" de cada silla sigue la mano del personaje, así las cartas del juego quedan en sus manos.
-//  - Mirada: gira la cabeza hacia quien juega, hacia el monto cuando cae una carta y hacia el acusado.
+//  - Mirada: gira la cabeza hacia quien juega, hacia el monto cuando cae una carta, hacia el acusado y hacia el castigado.
 //  - La cámara de este equipo va dentro de la cabeza del personaje de su silla: ese queda solo con sombra.
 public class PersonajesEnSillas : MonoBehaviour
 {
@@ -28,7 +28,7 @@ public class PersonajesEnSillas : MonoBehaviour
     [SerializeField] Transform monto;
 
     [Header("Ajustes")]
-    [SerializeField] bool ocultarSillasVacias = false;  // true: conectado, solo se ven los personajes de las sillas ocupadas
+    [SerializeField] bool ocultarSillasVacias = true;   // conectado, solo se ven los personajes de las sillas ocupadas (así lo dejó main)
     [SerializeField] Vector3 cartasDesdeMano = new Vector3(0.14f, 0.05f, 0.05f);   // (derecha, arriba, adelante) del puesto
     [SerializeField] float velocidadCartas = 12f;
     [SerializeField] float giroCabezaMax = 55f;
@@ -56,6 +56,8 @@ public class PersonajesEnSillas : MonoBehaviour
     float finMirarJugada;
     int acusador = -1, acusado = -1;
     float finAcusacion;
+    int castigado = -1;          // quiso ganar con un poder: todos lo miran mientras se come las cartas
+    float finCastigo;
 
     int Cantidad => personajes.Length;
 
@@ -79,8 +81,19 @@ public class PersonajesEnSillas : MonoBehaviour
         }
     }
 
-    void OnEnable() { if (red != null) red.Escuchar(TiposJuego.Acusacion, AlAcusar, Origen.Host); }
-    void OnDisable() { if (red != null) red.DejarDeEscuchar(TiposJuego.Acusacion, AlAcusar); }
+    void OnEnable()
+    {
+        if (red == null) return;
+        red.Escuchar(TiposJuego.Acusacion, AlAcusar, Origen.Host);
+        red.Escuchar(TiposJuego.Castigo, AlCastigar, Origen.Host);
+    }
+
+    void OnDisable()
+    {
+        if (red == null) return;
+        red.DejarDeEscuchar(TiposJuego.Acusacion, AlAcusar);
+        red.DejarDeEscuchar(TiposJuego.Castigo, AlCastigar);
+    }
 
     // "¡Mentiroso!": el que acusó golpea la mesa y todos miran al acusado
     void AlAcusar(Mensaje m)
@@ -90,6 +103,13 @@ public class PersonajesEnSillas : MonoBehaviour
         acusado = d.acusado;
         finAcusacion = Time.time + segundosAcusacion;
         if (acusador >= 0 && acusador < Cantidad) animadores[acusador].SetTrigger(acusar);
+    }
+
+    // Quiso ganar con un poder: se come cartas (eso ya dispara Comer) y los demás lo miran
+    void AlCastigar(Mensaje m)
+    {
+        castigado = m.Leer<DatosCastigo>().silla;
+        finCastigo = Time.time + segundosAcusacion;
     }
 
     void Update()
@@ -191,6 +211,12 @@ public class PersonajesEnSillas : MonoBehaviour
         if (Time.time < finAcusacion && acusado >= 0 && acusador >= 0)
         {
             objetivo = cabezas[i == acusado ? acusador : acusado].position;
+            return true;
+        }
+        if (Time.time < finCastigo && castigado >= 0 && castigado < Cantidad)
+        {
+            if (i == castigado) return false;   // él mira el mazo con su animación de comer
+            objetivo = cabezas[castigado].position;
             return true;
         }
         if (Time.time < finMirarJugada && ultimaJugada >= 0 && ultimaJugada != i && monto != null)

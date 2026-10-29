@@ -5618,7 +5618,7 @@ MonoBehaviour:
   - {fileID: 188481465}
   - {fileID: 210054467}
   monto: {fileID: 135858269}
-  ocultarSillasVacias: 0
+  ocultarSillasVacias: 1
   cartasDesdeMano: {x: 0.14, y: 0.05, z: 0.05}
   velocidadCartas: 12
   giroCabezaMax: 55
