@@ -13,8 +13,13 @@ public static class TiposJuego
     public const string Acusar = "juego.acusar";         // jugador → host: "¡Mentiroso!" (a la última carta del monto)
     public const string Acusacion = "juego.acusacion";   // host → todos: el resultado de la acusación
     public const string Comer = "juego.comer";           // host → UN jugador: qué cartas se comió (privado)
+    public const string Castigo = "juego.castigo";       // host → todos: alguien quiso ganar con un poder y se come cartas
 }
-
+[Serializable]
+public class DatosCastigo{
+    public int silla;
+    public int cantidad =3;
+}
 [Serializable]
 public class DatosSillas
 {
