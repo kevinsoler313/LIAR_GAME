@@ -99,7 +99,7 @@ ModelImporter:
       takeName: MujerS_Rig|Descansar
       internalID: -7478732264119412478
       firstFrame: 0
-      lastFrame: 96
+      lastFrame: 288
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -128,7 +128,7 @@ ModelImporter:
       takeName: MujerS_Rig|Esperar
       internalID: -3572468663804247550
       firstFrame: 0
-      lastFrame: 96
+      lastFrame: 288
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

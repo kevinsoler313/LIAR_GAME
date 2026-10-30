@@ -99,7 +99,7 @@ ModelImporter:
       takeName: Viejo_Rig|Descansar
       internalID: 7214435851852011127
       firstFrame: 0
-      lastFrame: 96
+      lastFrame: 288
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -128,7 +128,7 @@ ModelImporter:
       takeName: Viejo_Rig|Esperar
       internalID: -2979665641522277571
       firstFrame: 0
-      lastFrame: 96
+      lastFrame: 288
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

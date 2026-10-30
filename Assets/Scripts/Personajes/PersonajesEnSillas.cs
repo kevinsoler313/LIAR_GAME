@@ -8,7 +8,8 @@ using UnityEngine.Rendering;
 //  - Animación: Descansar sin cartas (manos en la mesa), Esperar con cartas, MiTurno en su turno, Ganar si ganó,
 //    Jugar cuando le sale una carta de la mano, Comer cuando le entran cartas (castigo) y Acusar si gritó "¡Mentiroso!".
 //  - Cartas: el ancla "Mano en mano" de cada silla sigue la mano del personaje, así las cartas del juego quedan en sus manos.
-//  - Mirada: gira la cabeza hacia quien juega, hacia el monto cuando cae una carta, hacia el acusado y hacia el castigado.
+//  - Mirada: hacia el monto cuando cae una carta, hacia el acusado y el castigado; a quien juega lo mira solo de a ratos
+//    (el resto del tiempo mira sus cartas o a los lados, como en su animación).
 //  - La cámara de este equipo va dentro de la cabeza del personaje de su silla: ese queda solo con sombra.
 public class PersonajesEnSillas : MonoBehaviour
 {
@@ -35,6 +36,7 @@ public class PersonajesEnSillas : MonoBehaviour
     [SerializeField] float velocidadMirada = 4f;
     [SerializeField] float segundosMirarJugada = 1.8f;
     [SerializeField] float segundosAcusacion = 3f;
+    [SerializeField, Range(0f, 1f)] float atencionAlTurno = 0.55f;   // fracción del tiempo que mira a quien juega
 
     static readonly int miTurno = Animator.StringToHash("MiTurno");
     static readonly int conCartas = Animator.StringToHash("ConCartas");
@@ -42,6 +44,7 @@ public class PersonajesEnSillas : MonoBehaviour
     static readonly int jugar = Animator.StringToHash("Jugar");
     static readonly int comer = Animator.StringToHash("Comer");
     static readonly int acusar = Animator.StringToHash("Acusar");
+    static readonly int desfase = Animator.StringToHash("Desfase");
 
     Renderer[][] mallas;
     bool[] visibles;
@@ -78,6 +81,8 @@ public class PersonajesEnSillas : MonoBehaviour
             // en la pose de reposo la cabeza mira al frente del puesto
             frenteCabeza[i] = Quaternion.Inverse(cabezas[i].rotation) * puestos[i].forward;
             miradaActual[i] = cabezas[i].position + puestos[i].forward;
+            // cada uno en otro punto de sus loops: no hacen los mismos gestos a la vez
+            animadores[i].SetFloat(desfase, (i * 0.29f + Random.value * 0.15f) % 1f);
         }
     }
 
@@ -204,6 +209,9 @@ public class PersonajesEnSillas : MonoBehaviour
         }
     }
 
+    // De a ratos (ruido suave, distinto para cada silla): nadie se queda mirando fijo a quien juega
+    bool Atento(int i) => Mathf.PerlinNoise(Time.time * 0.22f, i * 3.7f + 0.5f) < atencionAlTurno;
+
     // Hacia dónde mira el personaje de la silla i (false = deja la mirada de su animación)
     bool ObjetivoMirada(int i, out Vector3 objetivo)
     {
@@ -225,7 +233,7 @@ public class PersonajesEnSillas : MonoBehaviour
             return true;
         }
         if (partida == null) return false;
-        if (partida.EnJuego && partida.Turno >= 0 && partida.Turno != i)
+        if (partida.EnJuego && partida.Turno >= 0 && partida.Turno != i && Atento(i))
         {
             objetivo = cabezas[partida.Turno].position;
             return true;

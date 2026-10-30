@@ -195,6 +195,7 @@ public static class ConstructorPersonajes
         controlador.AddParameter("ConCartas", AnimatorControllerParameterType.Bool);
         controlador.AddParameter("Gano", AnimatorControllerParameterType.Bool);
         foreach (var accion in acciones) controlador.AddParameter(accion, AnimatorControllerParameterType.Trigger);
+        controlador.AddParameter("Desfase", AnimatorControllerParameterType.Float);   // cada uno empieza sus loops en otro punto
 
         var maquina = controlador.layers[0].stateMachine;
         var descansar = Estado(maquina, "Descansar", clips);
@@ -202,6 +203,12 @@ public static class ConstructorPersonajes
         var turno = Estado(maquina, "MiTurno", clips);
         var ganar = Estado(maquina, "Ganar", clips);
         maquina.defaultState = descansar;   // antes de repartir nadie tiene cartas
+        // sin esto, al terminar el reparto los cuatro entran a Esperar a la vez y hacen los mismos gestos sincronizados
+        foreach (var bucle in new[] { descansar, esperar, turno })
+        {
+            bucle.cycleOffsetParameter = "Desfase";
+            bucle.cycleOffsetParameterActive = true;
+        }
 
         Transicion(descansar.AddTransition(esperar), 0.4f, ("ConCartas", true));
         Transicion(esperar.AddTransition(descansar), 0.4f, ("ConCartas", false));
