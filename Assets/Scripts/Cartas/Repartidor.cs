@@ -122,4 +122,7 @@ public class Repartidor : MonoBehaviour
         t.localRotation = giroHasta;
     }
     public void FijarActivos(bool[] nuevos) => activos = nuevos;
+
+    // En red, cuántas cartas se reparten lo decide el host (PartidaRed), no este componente
+    public void FijarCartasPorJugador(int cantidad) => cartasPorJugador = cantidad;
 }

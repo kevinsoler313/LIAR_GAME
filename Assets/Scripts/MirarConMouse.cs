@@ -20,6 +20,7 @@ public class MirarConMouse : MonoBehaviour
         void Update()
     {
         if (Mouse.current == null) return;                  // no hay mouse conectado
+        if (MenuPausa.Abierto) return;                      // con el menú de pausa abierto no se gira la cámara
         if (!Mouse.current.rightButton.isPressed) return;   // solo gira con clic derecho
 
         Vector2 delta = Mouse.current.delta.ReadValue();    // cuánto se movió el mouse este frame

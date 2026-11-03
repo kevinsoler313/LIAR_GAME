@@ -124,7 +124,7 @@ public class PartidaRed : MonoBehaviour
         }
 
         // Tecla M: "¡Mentiroso!"
-        if (red.Conectado && PuedoAcusar && !acusacionEnviada && !SelectorOpciones.BloqueaEntrada
+        if (red.Conectado && PuedoAcusar && !acusacionEnviada && !SelectorOpciones.BloqueaEntrada && !MenuPausa.Abierto
             && Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame)
             Acusar();
 
@@ -268,6 +268,18 @@ public class PartidaRed : MonoBehaviour
         // Sin cartas = gana en el acto. Primero todos ven caer su última carta (la jugada de arriba)
         // y enseguida llega el "juego.estado" con el ganador.
         if (sinCartas) Terminar(silla);
+
+        // Le llega el turno a otro jugador y en su mano solo hay poderes: roba cartas automáticamente
+        else if (turno >= 0 && turno != silla && SoloPoderes(turno)) Castigado(turno, true);
+    }
+
+    // true si la mano de esa silla tiene cartas, pero todas son poderes (Pass, Return, Break)
+    bool SoloPoderes(int silla)
+    {
+        if (manosIds[silla].Count == 0) return false;
+        foreach (int id in manosIds[silla])
+            if (!baraja.PorId(id).EsPoder) return false;   // con una sola carta normal ya no es "solo poderes"
+        return true;
     }
 
     // Devuelve el motivo si la jugada NO se puede hacer, o null si está bien
@@ -304,7 +316,7 @@ public class PartidaRed : MonoBehaviour
     const string NoGanarConPoder = "No puedes ganar con un poder";
 
     // HOST: quiso ganar con un poder (no le quedan cartas normales). Se come cartas del mazo.
-    void Castigado(int silla){
+    void Castigado(int silla, bool alEmpezarTurno = false){
         var castigado = silla;
 
         // 1) Se come las de arriba del mazo (las mismas que va a sacar el mazo de la mesa)
@@ -323,7 +335,7 @@ public class PartidaRed : MonoBehaviour
         else red.EnviarA(mesa.IdEnSilla(castigado), TiposJuego.Comer, new DatosComer { cartas = comidas.ToArray() });
 
         // 3) Que todos lo vean: primero en el host y después en los demás
-        var d = new DatosCastigo { silla = castigado, cantidad = comidas.Count };
+        var d = new DatosCastigo { silla = castigado, cantidad = comidas.Count, alEmpezarTurno = alEmpezarTurno };
         AplicarCastigo(d);
         red.EnviarATodos(TiposJuego.Castigo, d);
     }
@@ -340,8 +352,16 @@ public class PartidaRed : MonoBehaviour
     {
         manos[d.silla].CancelarPendiente();   // el poder que quiso tirar no se juega: se puede volver a elegir
 
-        string quien = d.silla == MiSilla ? "Quisiste" : Nombre(d.silla) + " quiso";
-        aviso.Mostrar("¡CASTIGO!", quien + " ganar con un poder. " + SeCome(d.silla, d.cantidad));
+        if (d.alEmpezarTurno)
+        {
+            string quien = d.silla == MiSilla ? "Solo te quedan poderes." : Nombre(d.silla) + " solo tiene poderes.";
+            aviso.Mostrar("¡A ROBAR!", quien + " " + SeCome(d.silla, d.cantidad));
+        }
+        else
+        {
+            string quien = d.silla == MiSilla ? "Quisiste" : Nombre(d.silla) + " quiso";
+            aviso.Mostrar("¡CASTIGO!", quien + " ganar con un poder. " + SeCome(d.silla, d.cantidad));
+        }
 
         DarCartas(d.silla, d.cantidad);
     }
@@ -562,6 +582,9 @@ public class PartidaRed : MonoBehaviour
 
         mazoMesa.ConstruirOculto();
         repartidor.FijarActivos(d.ocupadas);
+        // La animación reparte exactamente las cartas que el host repartió de verdad.
+        // Si no, con un número distinto en el Repartidor quedaban cartas "invisibles" y nadie podía ganar.
+        repartidor.FijarCartasPorJugador(d.mano.Length);
         repartidor.antesDeTerminar.AddListener(RevelarMisCartas);
         repartidor.Repartir();
     }
@@ -593,6 +616,10 @@ public class PartidaRed : MonoBehaviour
     // ================================================================ Textos
 
     // "Tú" si es mi silla; si no, "Jugador 2" (las sillas empiezan en 0, los jugadores en 1)
+    // Para depurar: cuántas cartas tiene esa silla según el host (solo tiene sentido en el host)
+    public int CartasSecretas(int silla) => manosIds[silla].Count;
+    public string ManoSecreta(int silla) => string.Join(",", manosIds[silla].ConvertAll(id => baraja.PorId(id).ToString()));
+
     public string Nombre(int silla) => silla == MiSilla ? "Tú" : "Jugador " + (silla + 1);
 
     string SeCome(int silla, int cantidad)

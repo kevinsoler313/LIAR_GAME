@@ -19,6 +19,7 @@ public static class TiposJuego
 public class DatosCastigo{
     public int silla;
     public int cantidad =3;
+    public bool alEmpezarTurno;   // true = le llegó el turno con solo poderes; false = intentó ganar tirando un poder
 }
 [Serializable]
 public class DatosSillas

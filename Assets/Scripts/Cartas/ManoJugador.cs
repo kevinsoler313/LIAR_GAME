@@ -86,7 +86,7 @@ public class ManoJugador : MonoBehaviour
     // Solo en la mano de este equipo: flechas para elegir, E para tirar, Espacio para bajar/levantar
     void LeerTeclado()
     {
-        if (Keyboard.current == null || SelectorOpciones.BloqueaEntrada) return;   // eligiendo la opción de un poder
+        if (Keyboard.current == null || SelectorOpciones.BloqueaEntrada || MenuPausa.Abierto) return;   // eligiendo la opción de un poder
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
             if (EnMano) Bajar();

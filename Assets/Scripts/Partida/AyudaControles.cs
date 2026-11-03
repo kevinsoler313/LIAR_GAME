@@ -39,7 +39,7 @@ public class AyudaControles : MonoBehaviour
 
     void Update()
     {
-        bool visible = (menuRed == null || !menuRed.activeInHierarchy) && !SelectorOpciones.Abierto;
+        bool visible = (menuRed == null || !menuRed.activeInHierarchy) && !SelectorOpciones.Abierto && !MenuPausa.Abierto;
 
         if (visible && Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame)
         {
