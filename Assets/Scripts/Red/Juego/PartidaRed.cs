@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using LiarGame.Red;
 using LiarGame.Red.Protocolo;
@@ -37,15 +38,44 @@ public class PartidaRed : MonoBehaviour
     [SerializeField] EstadoPartida estado;         // la escalera
     [SerializeField] AvisoPoder aviso;             // carteles: rechazos y resultado de las acusaciones
     [SerializeField] Monto montoCentro;            // el monto boca abajo (para voltear la carta acusada)
+    [SerializeField] EfectoMentiroso efectoMentiroso;   // borde rojo y temblor de pantalla al acusar
     [SerializeField] DatosCastigo datosCastigo;
     [Header("Reglas")]
     [SerializeField] int cartasCastigo = 3;        // las que se come quien pierde una acusación
+    [SerializeField] float segundosPorTurno = 10f;   // si no juega en este tiempo, se come cartas y pasa el turno
     [SerializeField] float segundosParaAcusar = 5f;   // tiempo para acusar a quien se quedó sin cartas
+    [SerializeField] float esperaAntesDeRevelar = 2f;  // después del grito, antes de mostrar la carta
+    [SerializeField] float segundosSubirCarta = 4f;     // la carta acusada sube despacio del monto…
+    [SerializeField] float segundosMostrandoCarta = 2f; // …se queda arriba a la vista de todos…
+    [SerializeField] float segundosAntesDelResultado = 1f;   // ya arriba, cuánto esperar para mostrar "¡MENTIROSO!/¡ERA VERDAD!"
+    [SerializeField] float segundosBajarCarta = 2f;     // …y vuelve a bajar
 
     // ================================================================ Lo que todos saben
 
     public bool EnJuego { get; private set; }
-    public int Turno { get; private set; } = -1;    // silla que juega (-1 = nadie)
+    public int Turno                                 // silla que juega (-1 = nadie)
+    {
+        get => turno;
+        private set
+        {
+            if (value == turno) return;              // un poder no gasta el turno: sin sonido
+            turno = value;
+            tiempoUsado = 0f;                        // turno nuevo: reloj desde cero
+            if (turno < 0 || !EnJuego) return;
+            if (turno == MiSilla) Sonidos.TuTurno(); // campanita: te toca a ti
+            else Sonidos.Turno();                    // golpecito: le toca a otro
+        }
+    }
+    int turno = -1;
+
+    // ---------- Reloj del turno ----------
+    // Cada equipo lleva su propio reloj (para dibujar la torta); solo el del host castiga.
+    // Se reinicia con cada turno nuevo y cada carta jugada, y se pausa mientras no se puede jugar.
+    float tiempoUsado;
+    public float SegundosPorTurno => segundosPorTurno;
+    public float TiempoRestante => Mathf.Max(0f, segundosPorTurno - tiempoUsado);
+    public bool RelojCorriendo => EnJuego && Turno >= 0 && !Revelando && !EsperandoAcusacionFinal
+                                  && (repartidor == null || !repartidor.Repartiendo);
     public int Ganador { get; private set; } = -1;  // silla que ganó la última partida (-1 = nadie)
 
     // La última carta que cayó al monto: quién la tiró, qué número "decía" ser, y si todavía se puede acusar
@@ -55,7 +85,11 @@ public class PartidaRed : MonoBehaviour
 
     public int MiSilla => mesa.MiSilla;
     public bool EsMiTurno => EnJuego && Turno >= 0 && Turno == MiSilla;
-    public bool PuedoAcusar => EnJuego && HayAcusable && MiSilla >= 0 && UltimaSilla != MiSilla;
+    public bool PuedoAcusar => EnJuego && HayAcusable && !Revelando && MiSilla >= 0 && UltimaSilla != MiSilla;
+
+    // Entre el grito de "¡Mentiroso!" y el castigo: nadie puede jugar ni acusar mientras se revela la carta
+    public bool Revelando { get; private set; }
+    Coroutine revelacion;
     public bool EsperandoAcusacionFinal => EnJuego && Turno < 0 && UltimaSilla >= 0;   // alguien se quedó sin cartas
 
     bool acusacionEnviada;   // para no mandar dos "¡Mentiroso!" seguidos
@@ -131,6 +165,13 @@ public class PartidaRed : MonoBehaviour
         // HOST: se acabó el tiempo para acusar a quien se quedó sin cartas → gana
         if (red.EsHost && EnJuego && posibleGanador >= 0 && Time.time >= finEspera)
             Terminar(posibleGanador);
+
+        // Reloj del turno. HOST: si se acabó, el que juega se come cartas y el turno pasa al siguiente
+        if (RelojCorriendo)
+        {
+            tiempoUsado += Time.deltaTime;
+            if (red.EsHost && tiempoUsado >= segundosPorTurno) SeAcaboElTiempo();
+        }
     }
 
     // ================================================================ Empezar y repartir (host)
@@ -286,6 +327,7 @@ public class PartidaRed : MonoBehaviour
     string ValidarJugada(int silla, DatosJugar pedido)
     {
         if (!EnJuego) return "La partida no ha empezado";
+        if (Revelando) return "Espera a que se revele la carta";
         if (silla < 0) return "No estás sentado en la mesa";
         if (Turno < 0) return "Alguien se quedó sin cartas: ¿lo acusan?";
         if (silla != Turno) return "No es tu turno: le toca al Jugador " + (Turno + 1);
@@ -316,7 +358,18 @@ public class PartidaRed : MonoBehaviour
     const string NoGanarConPoder = "No puedes ganar con un poder";
 
     // HOST: quiso ganar con un poder (no le quedan cartas normales). Se come cartas del mazo.
-    void Castigado(int silla, bool alEmpezarTurno = false){
+    // HOST: el jugador de turno no jugó a tiempo
+    void SeAcaboElTiempo()
+    {
+        int silla = Turno;
+        tiempoUsado = 0f;   // que no se dispare dos veces mientras llega el castigo
+        Castigado(silla, porTiempo: true);
+
+        // Igual que al jugar: si al siguiente solo le quedan poderes, roba solo
+        if (Turno >= 0 && Turno != silla && SoloPoderes(Turno)) Castigado(Turno, true);
+    }
+
+    void Castigado(int silla, bool alEmpezarTurno = false, bool porTiempo = false){
         var castigado = silla;
 
         // 1) Se come las de arriba del mazo (las mismas que va a sacar el mazo de la mesa)
@@ -335,7 +388,8 @@ public class PartidaRed : MonoBehaviour
         else red.EnviarA(mesa.IdEnSilla(castigado), TiposJuego.Comer, new DatosComer { cartas = comidas.ToArray() });
 
         // 3) Que todos lo vean: primero en el host y después en los demás
-        var d = new DatosCastigo { silla = castigado, cantidad = comidas.Count, alEmpezarTurno = alEmpezarTurno };
+        var d = new DatosCastigo { silla = castigado, cantidad = comidas.Count, alEmpezarTurno = alEmpezarTurno,
+                                   porTiempo = porTiempo, turno = porTiempo ? Siguiente(castigado) : -1 };
         AplicarCastigo(d);
         red.EnviarATodos(TiposJuego.Castigo, d);
     }
@@ -351,8 +405,15 @@ public class PartidaRed : MonoBehaviour
     void AplicarCastigo(DatosCastigo d)
     {
         manos[d.silla].CancelarPendiente();   // el poder que quiso tirar no se juega: se puede volver a elegir
+        tiempoUsado = 0f;
 
-        if (d.alEmpezarTurno)
+        if (d.porTiempo)
+        {
+            string quien = d.silla == MiSilla ? "No jugaste a tiempo." : Nombre(d.silla) + " no jugó a tiempo.";
+            aviso.Mostrar("¡TIEMPO!", quien + " " + SeCome(d.silla, d.cantidad));
+            Turno = d.turno;
+        }
+        else if (d.alEmpezarTurno)
         {
             string quien = d.silla == MiSilla ? "Solo te quedan poderes." : Nombre(d.silla) + " solo tiene poderes.";
             aviso.Mostrar("¡A ROBAR!", quien + " " + SeCome(d.silla, d.cantidad));
@@ -379,6 +440,7 @@ public class PartidaRed : MonoBehaviour
     {
         if (d.silla < 0 || d.silla >= manos.Length) return;
         Turno = d.turno;
+        tiempoUsado = 0f;   // también tras un poder: tiene el tiempo completo para tirar su carta
         var mano = manos[d.silla];
 
         // Si fui yo, muevo justo la carta que elegí. Si fue otro, sus cartas están ocultas para mí: muevo cualquiera.
@@ -471,10 +533,8 @@ public class PartidaRed : MonoBehaviour
             turno = ganador >= 0 ? -1 : turno
         };
         cartaAcusable = -1;
-        AplicarAcusacion(d);
         red.EnviarATodos(TiposJuego.Acusacion, d);
-
-        if (ganador >= 0) Terminar(ganador);
+        IniciarAcusacion(d, ganador);   // el host termina la partida (si alguien ganó) cuando acaba la revelación
     }
 
     // Es verdad si es justo el número que tocaba. El comodín vale por cualquier número: nunca es mentira.
@@ -491,28 +551,60 @@ public class PartidaRed : MonoBehaviour
     void AlRecibirAcusacion(Mensaje m)
     {
         if (red.EsHost) return;
-        AplicarAcusacion(m.Leer<DatosAcusacion>());
+        IniciarAcusacion(m.Leer<DatosAcusacion>(), -1);
     }
 
-    void AplicarAcusacion(DatosAcusacion d)
+    // En todos los equipos y al mismo tiempo:
+    //   grito + borde rojo + temblor → espera → la carta acusada sube y se muestra a toda la mesa → castigo
+    void IniciarAcusacion(DatosAcusacion d, int ganador)
     {
         HayAcusable = false;
         acusacionEnviada = false;
-        Turno = d.turno;
+        DetenerRevelacion();
+        Revelando = true;
+        revelacion = StartCoroutine(RutinaAcusacion(d, ganador));
+    }
+
+    IEnumerator RutinaAcusacion(DatosAcusacion d, int ganador)
+    {
+        var acusada = montoCentro != null ? montoCentro.Ultima : null;   // se toma ya: es la que acaban de acusar
+
+        Sonidos.Mentiroso();
+        if (efectoMentiroso != null) efectoMentiroso.Disparar();
+        yield return new WaitForSeconds(esperaAntesDeRevelar);
 
         var real = baraja.PorId(d.carta);
-        var acusada = montoCentro != null ? montoCentro.Ultima : null;
+        Coroutine exhibir = null;
         if (acusada != null)
         {
             acusada.Revelar(real);
-            montoCentro.Voltear(acusada);
+            exhibir = montoCentro.Exhibir(acusada, segundosSubirCarta, segundosMostrandoCarta, segundosBajarCarta);
         }
 
+        // El cartel del resultado sale cuando la carta ya está arriba a la vista de todos
+        float antesDelCartel = Mathf.Min(segundosSubirCarta + segundosAntesDelResultado, segundosSubirCarta + segundosMostrandoCarta);
+        yield return new WaitForSeconds(antesDelCartel);
         string era = "Era " + NombreCarta(real) + ".";
         if (d.mentira) aviso.Mostrar("¡MENTIROSO!", era + " Tocaba el " + d.esperado + ". " + SeCome(d.castigado, d.cantidad));
         else aviso.Mostrar("¡ERA VERDAD!", era + " " + SeCome(d.castigado, d.cantidad));
 
+        if (exhibir != null) yield return exhibir;
+        else yield return new WaitForSeconds(segundosSubirCarta + segundosMostrandoCarta + segundosBajarCarta - antesDelCartel);
+
+        Turno = d.turno;
+        tiempoUsado = 0f;
         DarCartas(d.castigado, d.cantidad);
+        Revelando = false;
+        revelacion = null;
+
+        if (ganador >= 0) Terminar(ganador);
+    }
+
+    void DetenerRevelacion()
+    {
+        if (revelacion != null) StopCoroutine(revelacion);
+        revelacion = null;
+        Revelando = false;
     }
 
     // El castigado saca cartas del mazo de la mesa y le vuelan a la mano. Solo él ve cuáles son
@@ -579,6 +671,7 @@ public class PartidaRed : MonoBehaviour
         HayAcusable = false;
         acusacionEnviada = false;
         misComidas = null;
+        DetenerRevelacion();
 
         mazoMesa.ConstruirOculto();
         repartidor.FijarActivos(d.ocupadas);
@@ -602,6 +695,7 @@ public class PartidaRed : MonoBehaviour
 
     void AlDesconectarse(string motivo)
     {
+        DetenerRevelacion();
         EnJuego = false;
         Turno = -1;
         HayAcusable = false;
@@ -615,12 +709,12 @@ public class PartidaRed : MonoBehaviour
 
     // ================================================================ Textos
 
-    // "Tú" si es mi silla; si no, "Jugador 2" (las sillas empiezan en 0, los jugadores en 1)
+    // "Tú" si es mi silla; si no, el nombre que escribió ese jugador ("Jugador 2" si no puso ninguno)
     // Para depurar: cuántas cartas tiene esa silla según el host (solo tiene sentido en el host)
     public int CartasSecretas(int silla) => manosIds[silla].Count;
     public string ManoSecreta(int silla) => string.Join(",", manosIds[silla].ConvertAll(id => baraja.PorId(id).ToString()));
 
-    public string Nombre(int silla) => silla == MiSilla ? "Tú" : "Jugador " + (silla + 1);
+    public string Nombre(int silla) => silla == MiSilla ? "Tú" : mesa.NombreEnSilla(silla);
 
     string SeCome(int silla, int cantidad)
     {

@@ -81,6 +81,7 @@ public class Repartidor : MonoBehaviour
                 int indice = cartasEnMano[j].Count;
                 cartasEnMano[j].Add(carta);
                 vuelos.Add(StartCoroutine(Volar(carta, manos[j], indice)));
+                Sonidos.Repartir();
                 yield return new WaitForSeconds(intervalo);
             }
 

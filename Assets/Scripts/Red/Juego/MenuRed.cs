@@ -15,6 +15,7 @@ public class MenuRed : MonoBehaviour
 
     [Header("UI")]
     [SerializeField] GameObject panelMenu;       // se esconde cuando ya estás conectado
+    [SerializeField] TMP_InputField campoNombre; // cómo te verán los demás en la mesa (se recuerda para la próxima)
     [SerializeField] TMP_InputField campoIP;     // aquí el cliente escribe la IP del host
     [SerializeField] TMP_Text textoMiIP;         // muestra la IP de este equipo
     [SerializeField] TMP_Text textoEstado;       // "Conectando...", errores, etc.
@@ -38,12 +39,68 @@ public class MenuRed : MonoBehaviour
         panelMenu.SetActive(true);
         textoEstado.text = "";
         textoMiIP.text = "Tu IP: " + ObtenerIPLocal();
+        if (campoNombre != null)
+        {
+            campoNombre.characterLimit = 16;
+            campoNombre.text = PlayerPrefs.GetString(ClaveNombre, "");
+        }
+
+        string ip = IPAutoUnirse;
+        if (ip != null)
+        {
+            autoUnirseUsado = true;   // solo la primera vez: si vuelves al menú, ya decides tú
+            campoIP.text = ip;
+            if (campoNombre != null) campoNombre.text = ArgumentoPrueba("-nombre") ?? "Invitado";
+            UnirsePartida();
+        }
+    }
+
+    const string ClaveNombre = "nombreJugador";
+
+    // Lee el nombre del campo, lo recuerda y se lo deja a la mesa. false (y un aviso) si está vacío.
+    bool TomarNombre()
+    {
+        string nombre = campoNombre != null ? campoNombre.text.Trim() : "";
+        if (nombre == "")
+        {
+            textoEstado.text = "Escribe tu nombre para entrar a la mesa";
+            if (campoNombre != null) campoNombre.ActivateInputField();
+            return false;
+        }
+        PlayerPrefs.SetString(ClaveNombre, nombre);
+        PlayerPrefs.Save();
+        MesaRed.NombreLocal = nombre;
+        return true;
+    }
+
+    // Para probar en una sola máquina: abrir un build de desarrollo con "--args -unirse 127.0.0.1"
+    // salta el menú y se une sola a esa IP. En builds normales (no Development) no hace nada.
+    // Se lee al pedirla (no en un inicializador estático: Unity no deja usar Debug.isDebugBuild ahí).
+    public static string IPAutoUnirse
+    {
+        get
+        {
+            if (autoUnirseUsado) return null;
+            return ArgumentoPrueba("-unirse");
+        }
+    }
+    static bool autoUnirseUsado;
+
+    // "--args -unirse 127.0.0.1 -nombre Ana": el valor que sigue a "clave" (solo en builds de desarrollo)
+    static string ArgumentoPrueba(string clave)
+    {
+        if (!Debug.isDebugBuild || Application.isEditor) return null;
+        var args = System.Environment.GetCommandLineArgs();
+        for (int i = 0; i < args.Length - 1; i++)
+            if (args[i] == clave) return args[i + 1];
+        return null;
     }
 
     // ---------- Botones ----------
 
     public void CrearPartida()
     {
+        if (!TomarNombre()) return;
         BotonesActivos(false);
         if (red.CrearPartida(puerto, out string error))
         {
@@ -58,6 +115,7 @@ public class MenuRed : MonoBehaviour
 
     public void UnirsePartida()
     {
+        if (!TomarNombre()) return;
         string ip = campoIP.text.Trim();
         if (ip == "") ip = "127.0.0.1";   // vacío = este mismo equipo (útil para probar)
 
@@ -83,6 +141,8 @@ public class MenuRed : MonoBehaviour
     void AlConectarse()
     {
         panelMenu.SetActive(false);
+        MusicaFondo.Apagar();   // ya estás en la partida (la creaste o te uniste): se acaba la música del menú
+        MusicaPartida.Encender();   // y empiezan las canciones del bar
     }
 
     // No se pudo conectar, el host cerró la partida, o nos sacaron (por ejemplo, mesa llena)
@@ -91,6 +151,8 @@ public class MenuRed : MonoBehaviour
         panelMenu.SetActive(true);
         BotonesActivos(true);
         textoEstado.text = motivo;
+        MusicaPartida.Apagar();
+        MusicaFondo.Reanudar();   // de vuelta en la sala: vuelve la música del menú
     }
 
     // ---------- Ayudas ----------
@@ -100,6 +162,7 @@ public class MenuRed : MonoBehaviour
         botonCrear.interactable = activos;
         botonUnirse.interactable = activos;
         campoIP.interactable = activos;
+        if (campoNombre != null) campoNombre.interactable = activos;
     }
 
     // Truco: "conectar" un socket UDP no envía nada, pero hace que el sistema
