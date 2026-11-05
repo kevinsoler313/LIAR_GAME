@@ -28,7 +28,10 @@ public static class ConstructorPersonajes
 
     // Bartender y mesero, de pie (Saludar y Entregar son de una vez)
     static readonly string[] personal = { "Bartender", "Mesero" };
-    static readonly string[] enBuclePersonal = { "Limpiar_Vaso", "Limpiar_Barra", "Esperar", "Caminar" };
+    static readonly string[] enBuclePersonal = { "Limpiar_Vaso", "Limpiar_Barra", "Esperar", "Caminar", "Charlar" };
+    // clientes sentados (Personajes_Cliente.blend, sale con la silla en el origen y la mesa a 0,9 m al frente)
+    const string cliente = "Cliente";
+    const float distanciaMesaCliente = 0.9f;
     const float escalaPersonal = 0.9f;      // como los jugadores
     // su animación apoya las manos en una barra de 1,07 m (x0,9 = 0,96 m) y la barra del bar quedó a 0,83 m:
     // se hunde detrás del mostrador, que le tapa los pies
@@ -104,8 +107,8 @@ public static class ConstructorPersonajes
         Debug.Log("[Personajes] Colocados en " + rutaEscena);
     }
 
-    // Bartender detrás de la barra y mesero caminando con su bandeja (Personajes_Bartender/Mesero.blend).
-    // Van en su propio objeto "PersonalBar": no se mezclan con los jugadores. Se puede volver a correr.
+    // Bartender detrás de la barra, mesero caminando con su bandeja y clientes en la primera mesa nueva
+    // (Personajes_Bartender/Mesero/Cliente.blend). Van en su propio objeto "PersonalBar": no se mezclan con los jugadores. Se puede volver a correr.
     [MenuItem("LIAR GAME/Colocar bartender y mesero")]
     public static void ConstruirPersonal()
     {
@@ -176,9 +179,32 @@ public static class ConstructorPersonajes
         datos.FindProperty("bartender").objectReferenceValue = comp;
         datos.ApplyModifiedPropertiesWithoutUndo();
 
+        // clientes en las sillas de la primera mesa nueva (la que el mesero atiende primero)
+        var mesaClientes = extras ? extras.transform.Find("Mesa_1") : null;
+        if (mesaClientes)
+        {
+            ConfigurarModelo(cliente, enBuclePersonal);
+            var controladorCliente = CrearControladorPersonal(cliente);
+            var sillas = mesaClientes.Cast<Transform>().Where(t => t.name.StartsWith("Chair")).ToArray();
+            for (int i = 0; i < sillas.Length; i++)
+            {
+                var hacia = mesaClientes.position - sillas[i].position;
+                hacia.y = 0;
+                // la animación espera la mesa a 0,9 m: si la silla quedó más lejos, se sienta un poco más adelante
+                var pos = sillas[i].position + hacia.normalized * (hacia.magnitude - distanciaMesaCliente);
+                pos.y = 0;
+                var c = ColocarPersonal(cliente, controladorCliente, raiz, pos, Quaternion.LookRotation(hacia));
+                c.name = cliente + "_" + (i + 1);
+                var compCliente = c.AddComponent<Cliente>();
+                datos = new SerializedObject(compCliente);
+                datos.FindProperty("animador").objectReferenceValue = c.GetComponentInChildren<Animator>();
+                datos.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
         EditorSceneManager.MarkSceneDirty(escena);
         EditorSceneManager.SaveScene(escena);
-        Debug.Log("[Personajes] Bartender y mesero colocados en " + rutaEscena);
+        Debug.Log("[Personajes] Bartender, mesero y clientes colocados en " + rutaEscena);
     }
 
     // Devuelve el objeto que se mueve (su +Z es hacia donde mira); el modelo va adentro girado 180 grados
@@ -217,7 +243,7 @@ public static class ConstructorPersonajes
         var controlador = AnimatorController.CreateAnimatorControllerAtPath(rutaControlador);
         var maquina = controlador.layers[0].stateMachine;
         foreach (var clip in clips.Keys.OrderBy(c => c)) Estado(maquina, clip, clips);
-        maquina.defaultState = maquina.states.First(s => s.state.name == "Esperar").state;
+        maquina.defaultState = maquina.states.Select(s => s.state).FirstOrDefault(s => s.name == "Esperar") ?? maquina.states[0].state;
         AssetDatabase.SaveAssets();
         return controlador;
     }
