@@ -1,3 +1,4 @@
+using System.Linq;
 using LiarGame.Red;
 using LiarGame.Red.Protocolo;
 using UnityEngine;
@@ -11,6 +12,8 @@ using UnityEngine.Rendering;
 //  - Mirada: hacia el monto cuando cae una carta, hacia el acusado y el castigado; a quien juega lo mira solo de a ratos
 //    (el resto del tiempo mira sus cartas o a los lados, como en su animación).
 //  - La cámara de este equipo va dentro de la cabeza del personaje de su silla: ese queda solo con sombra.
+//  - Cerveza: cada uno tiene su botella en la mesa (viene en su FBX). Mientras juega otro, de vez en cuando toma un trago
+//    (Beber). El de la silla de este equipo no bebe: la botella le pasaría frente a la cámara.
 public class PersonajesEnSillas : MonoBehaviour
 {
     [SerializeField] GameObject[] personajes;       // mallas de Puesto_0..3: MujerS, MujerC, Inseguro, Viejo
@@ -37,8 +40,12 @@ public class PersonajesEnSillas : MonoBehaviour
     [SerializeField] float segundosMirarJugada = 1.8f;
     [SerializeField] float segundosAcusacion = 3f;
     [SerializeField, Range(0f, 1f)] float atencionAlTurno = 0.55f;   // fracción del tiempo que mira a quien juega
+    [SerializeField] Vector2 segundosEntreTragos = new Vector2(12f, 28f);
 
     static readonly int miTurno = Animator.StringToHash("MiTurno");
+    static readonly int beber = Animator.StringToHash("Beber");
+    static readonly int estadoEsperar = Animator.StringToHash("Esperar");
+    static readonly int estadoBeber = Animator.StringToHash("Beber");
     static readonly int conCartas = Animator.StringToHash("ConCartas");
     static readonly int gano = Animator.StringToHash("Gano");
     static readonly int jugar = Animator.StringToHash("Jugar");
@@ -47,6 +54,8 @@ public class PersonajesEnSillas : MonoBehaviour
     static readonly int desfase = Animator.StringToHash("Desfase");
 
     Renderer[][] mallas;
+    Renderer[][] botellas;       // la botella de cada uno: va y viene con su personaje, pero no queda solo con sombra
+    float[] proximoTrago;
     bool[] visibles;
     int[] cartasAntes;
     Vector3[] anclaOriginal;     // localPosition de cada ancla, para devolverla si el personaje no está
@@ -67,6 +76,8 @@ public class PersonajesEnSillas : MonoBehaviour
     void Awake()
     {
         mallas = new Renderer[Cantidad][];
+        botellas = new Renderer[Cantidad][];
+        proximoTrago = new float[Cantidad];
         visibles = new bool[Cantidad];
         cartasAntes = new int[Cantidad];
         anclaOriginal = new Vector3[Cantidad];
@@ -76,6 +87,10 @@ public class PersonajesEnSillas : MonoBehaviour
         for (int i = 0; i < Cantidad; i++)
         {
             mallas[i] = personajes[i].GetComponentsInChildren<Renderer>(true);
+            // la malla del personaje y la botella son hermanas dentro del modelo
+            var personaje = personajes[i].transform;
+            botellas[i] = personaje.parent.GetComponentsInChildren<Renderer>(true).Where(r => !r.transform.IsChildOf(personaje)).ToArray();
+            proximoTrago[i] = Time.time + Random.Range(4f, segundosEntreTragos.y);
             visibles[i] = true;
             if (anclasCartas[i] != null) anclaOriginal[i] = anclasCartas[i].localPosition;
             // en la pose de reposo la cabeza mira al frente del puesto
@@ -143,6 +158,14 @@ public class PersonajesEnSillas : MonoBehaviour
             else if (cartasAntes[i] > 0 && ahora > cartasAntes[i]) animador.SetTrigger(comer);
             cartasAntes[i] = ahora;
             animador.SetBool(conCartas, ahora > 0);   // sin cartas (antes de repartir o silla vacía): manos en la mesa
+
+            // mientras juega otro, de vez en cuando un trago (solo desde Esperar: con cartas y sin otra acción encima)
+            if (Time.time >= proximoTrago[i] && i != local && ahora > 0 && !(enJuego && partida.Turno == i)
+                && !animador.IsInTransition(0) && animador.GetCurrentAnimatorStateInfo(0).shortNameHash == estadoEsperar)
+            {
+                animador.SetTrigger(beber);
+                proximoTrago[i] = Time.time + Random.Range(segundosEntreTragos.x, segundosEntreTragos.y);
+            }
         }
 
         if (local != sillaOculta)
@@ -162,6 +185,7 @@ public class PersonajesEnSillas : MonoBehaviour
         if (visibles[i] == visible) return;
         visibles[i] = visible;
         foreach (var malla in mallas[i]) malla.enabled = visible;
+        foreach (var botella in botellas[i]) botella.enabled = visible;
         EncenderLuz(i, sillaOculta);
     }
 
@@ -216,6 +240,8 @@ public class PersonajesEnSillas : MonoBehaviour
     bool ObjetivoMirada(int i, out Vector3 objetivo)
     {
         objetivo = Vector3.zero;
+        // tomando un trago: la cabeza va con la botella, como en su animación
+        if (animadores[i].GetCurrentAnimatorStateInfo(0).shortNameHash == estadoBeber) return false;
         if (Time.time < finAcusacion && acusado >= 0 && acusador >= 0)
         {
             objetivo = cabezas[i == acusado ? acusador : acusado].position;

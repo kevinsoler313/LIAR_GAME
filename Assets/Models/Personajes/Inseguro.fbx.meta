@@ -7,8 +7,33 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: Cerveza_Liquido
+    second: {fileID: 2100000, guid: b01b96280b8bf8841a7e21b3d7bfc437, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Etiqueta_Cerveza
+    second: {fileID: 2100000, guid: cd5991faa8812da488f79e9438f48a88, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Etiqueta_Cuello
+    second: {fileID: 2100000, guid: 4f57539954e29b14a8b3f87bcc981f28, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: Inseguro
     second: {fileID: 2100000, guid: 509ed1b47b6aaae48bc1f266f89b4880, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Tapa_Metal
+    second: {fileID: 2100000, guid: 4bfd090631c8bd04d9ee16e72c13eaf2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Vidrio_Ambar
+    second: {fileID: 2100000, guid: 614c782a589b28d48b00dd8810139eba, type: 2}
   materials:
     materialImportMode: 1
     materialName: 0
@@ -42,6 +67,35 @@ ModelImporter:
       internalID: 6673994872210250802
       firstFrame: 0
       lastFrame: 40
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 0
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000u
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
+      name: Beber
+      takeName: Inseguro_Rig|Beber
+      internalID: -8726771817325754018
+      firstFrame: 0
+      lastFrame: 84
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

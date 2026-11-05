@@ -19,7 +19,17 @@ public static class ConstructorPersonajes
     // Mismo orden que los puestos de SillasRed (Puesto_0..3)
     static readonly string[] nombres = { "MujerS", "MujerC", "Inseguro", "Viejo" };
     static readonly string[] enBucle = { "Esperar", "Descansar", "MiTurno", "Ganar" };
-    static readonly string[] acciones = { "Jugar", "Comer", "Acusar" };
+    static readonly string[] acciones = { "Jugar", "Comer", "Acusar", "Beber" };
+    // la botella de cerveza que cada uno tiene en la mesa viene en su FBX (Botella_Cerveza.blend):
+    // material de Blender -> (material de Unity, color, textura, brillo, metal)
+    static readonly (string blender, string unity, Color color, string textura, float brillo, float metal)[] materialesBotella =
+    {
+        ("Vidrio_Ambar", "Botella_Vidrio", new Color(0.8f, 0.42f, 0.1f), null, 0.9f, 0f),
+        ("Cerveza_Liquido", "Botella_Cerveza", new Color(0.55f, 0.28f, 0.04f), null, 0.85f, 0f),
+        ("Etiqueta_Cerveza", "Botella_Etiqueta", Color.white, "Etiqueta_Cerveza", 0.2f, 0f),
+        ("Etiqueta_Cuello", "Botella_Cuello", Color.white, "Etiqueta_Cuello", 0.25f, 0f),
+        ("Tapa_Metal", "Botella_Tapa", new Color(0.75f, 0.6f, 0.3f), null, 0.65f, 1f),
+    };
     // luz chica y cálida frente a cada cara: la única luz de la escena es la lámpara de arriba
     // y el ala del sombrero les dejaba la cara en negro
     const float intensidadLuzCara = 0.22f;
@@ -29,9 +39,9 @@ public static class ConstructorPersonajes
     // Bartender y mesero, de pie (Saludar y Entregar son de una vez)
     static readonly string[] personal = { "Bartender", "Mesero" };
     static readonly string[] enBuclePersonal = { "Limpiar_Vaso", "Limpiar_Barra", "Esperar", "Caminar", "Charlar" };
-    // clientes sentados (Personajes_Cliente.blend, sale con la silla en el origen y la mesa a 0,9 m al frente)
-    const string cliente = "Cliente";
-    const float distanciaMesaCliente = 0.9f;
+    // clientes sentados (Personajes_Cliente/Clienta.blend): salen con la silla en el origen y la mesa al frente,
+    // a la distancia de cada uno (la clienta tiene los brazos más cortos y se sienta más cerca)
+    static readonly (string nombre, float distanciaMesa)[] clientes = { ("Cliente", 0.9f), ("Clienta", 0.85f) };
     const float escalaPersonal = 0.9f;      // como los jugadores
     // su animación apoya las manos en una barra de 1,07 m (x0,9 = 0,96 m) y la barra del bar quedó a 0,83 m:
     // se hunde detrás del mostrador, que le tapa los pies
@@ -107,8 +117,8 @@ public static class ConstructorPersonajes
         Debug.Log("[Personajes] Colocados en " + rutaEscena);
     }
 
-    // Bartender detrás de la barra, mesero caminando con su bandeja y clientes en la primera mesa nueva
-    // (Personajes_Bartender/Mesero/Cliente.blend). Van en su propio objeto "PersonalBar": no se mezclan con los jugadores. Se puede volver a correr.
+    // Bartender detrás de la barra, mesero caminando con su bandeja y clientes en las mesas nuevas
+    // (Personajes_Bartender/Mesero/Cliente/Clienta.blend). Van en su propio objeto "PersonalBar": no se mezclan con los jugadores. Se puede volver a correr.
     [MenuItem("LIAR GAME/Colocar bartender y mesero")]
     public static void ConstruirPersonal()
     {
@@ -179,26 +189,34 @@ public static class ConstructorPersonajes
         datos.FindProperty("bartender").objectReferenceValue = comp;
         datos.ApplyModifiedPropertiesWithoutUndo();
 
-        // clientes en las sillas de la primera mesa nueva (la que el mesero atiende primero)
-        var mesaClientes = extras ? extras.transform.Find("Mesa_1") : null;
-        if (mesaClientes)
+        // clientes en todas las sillas de MesasExtra, alternando cliente y clienta (cada mesa empieza con otro)
+        if (extras)
         {
-            ConfigurarModelo(cliente, enBuclePersonal);
-            var controladorCliente = CrearControladorPersonal(cliente);
-            var sillas = mesaClientes.Cast<Transform>().Where(t => t.name.StartsWith("Chair")).ToArray();
-            for (int i = 0; i < sillas.Length; i++)
+            var controladoresClientes = clientes.ToDictionary(c => c.nombre, c =>
             {
-                var hacia = mesaClientes.position - sillas[i].position;
-                hacia.y = 0;
-                // la animación espera la mesa a 0,9 m: si la silla quedó más lejos, se sienta un poco más adelante
-                var pos = sillas[i].position + hacia.normalized * (hacia.magnitude - distanciaMesaCliente);
-                pos.y = 0;
-                var c = ColocarPersonal(cliente, controladorCliente, raiz, pos, Quaternion.LookRotation(hacia));
-                c.name = cliente + "_" + (i + 1);
-                var compCliente = c.AddComponent<Cliente>();
-                datos = new SerializedObject(compCliente);
-                datos.FindProperty("animador").objectReferenceValue = c.GetComponentInChildren<Animator>();
-                datos.ApplyModifiedPropertiesWithoutUndo();
+                ConfigurarModelo(c.nombre, enBuclePersonal);
+                return CrearControladorPersonal(c.nombre);
+            });
+            int k = 0, mesaNum = 0;
+            foreach (Transform mesa in extras.transform)
+            {
+                var sillas = mesa.Cast<Transform>().Where(t => t.name.StartsWith("Chair")).ToArray();
+                for (int i = 0; i < sillas.Length; i++)
+                {
+                    var (nombre, distancia) = clientes[(i + mesaNum) % clientes.Length];
+                    var hacia = mesa.position - sillas[i].position;
+                    hacia.y = 0;
+                    // cada animación espera la mesa a su distancia: si la silla quedó más lejos, se sienta más adelante
+                    var pos = sillas[i].position + hacia.normalized * (hacia.magnitude - distancia);
+                    pos.y = 0;
+                    var c = ColocarPersonal(nombre, controladoresClientes[nombre], raiz, pos, Quaternion.LookRotation(hacia));
+                    c.name = nombre + "_" + (++k);
+                    var compCliente = c.AddComponent<Cliente>();
+                    datos = new SerializedObject(compCliente);
+                    datos.FindProperty("animador").objectReferenceValue = c.GetComponentInChildren<Animator>();
+                    datos.ApplyModifiedPropertiesWithoutUndo();
+                }
+                mesaNum++;
             }
         }
 
@@ -312,6 +330,8 @@ public static class ConstructorPersonajes
         material.DisableKeyword("_EMISSION");
         EditorUtility.SetDirty(material);
         importador.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), nombre), material);
+        foreach (var m in materialesBotella)
+            importador.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), m.blender), MaterialBotella(m));
 
         // Blender nombra cada toma "<nombre>_Rig|<acción>": el clip se queda solo con la acción
         var clips = importador.defaultClipAnimations;
@@ -322,6 +342,23 @@ public static class ConstructorPersonajes
         }
         importador.clipAnimations = clips;
         importador.SaveAndReimport();
+    }
+
+    static Material MaterialBotella((string blender, string unity, Color color, string textura, float brillo, float metal) m)
+    {
+        string ruta = carpetaMateriales + "/" + m.unity + ".mat";
+        var material = AssetDatabase.LoadAssetAtPath<Material>(ruta);
+        if (material == null)
+        {
+            material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            AssetDatabase.CreateAsset(material, ruta);
+        }
+        material.SetTexture("_BaseMap", m.textura == null ? null : AssetDatabase.LoadAssetAtPath<Texture2D>(carpeta + "/Texturas/" + m.textura + ".png"));
+        material.SetColor("_BaseColor", m.color);
+        material.SetFloat("_Smoothness", m.brillo);
+        material.SetFloat("_Metallic", m.metal);
+        EditorUtility.SetDirty(material);
+        return material;
     }
 
     // Los modelos de Tripo traen normal map: se importa como "Normal map" y va en _BumpMap
