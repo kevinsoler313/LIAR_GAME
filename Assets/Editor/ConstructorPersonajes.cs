@@ -26,6 +26,14 @@ public static class ConstructorPersonajes
     const float alcanceLuzCara = 0.45f;
     static readonly Color colorLuzCara = new Color(1f, 0.82f, 0.62f);
 
+    // Bartender y mesero, de pie (Saludar y Entregar son de una vez)
+    static readonly string[] personal = { "Bartender", "Mesero" };
+    static readonly string[] enBuclePersonal = { "Limpiar_Vaso", "Limpiar_Barra", "Esperar", "Caminar" };
+    const float escalaPersonal = 0.9f;      // como los jugadores
+    // su animación apoya las manos en una barra de 1,07 m (x0,9 = 0,96 m) y la barra del bar quedó a 0,83 m:
+    // se hunde detrás del mostrador, que le tapa los pies
+    const float hundirBartender = 0.13f;
+
     [MenuItem("LIAR GAME/Colocar personajes en el bar")]
     public static void Construir()
     {
@@ -33,7 +41,7 @@ public static class ConstructorPersonajes
 
         if (!AssetDatabase.IsValidFolder(carpetaControladores))
             AssetDatabase.CreateFolder(carpeta, "Controladores");
-        var controladores = nombres.Select(n => { ConfigurarModelo(n); return CrearControlador(n); }).ToArray();
+        var controladores = nombres.Select(n => { ConfigurarModelo(n, enBucle); return CrearControlador(n); }).ToArray();
 
         var escena = EditorSceneManager.OpenScene(rutaEscena, OpenSceneMode.Single);
         // si su modelo ya no existe, Unity lo renombra "Personajes (Missing Prefab ...)": también se borra
@@ -71,7 +79,7 @@ public static class ConstructorPersonajes
             cabezas[i] = Buscar(modelo.transform, "head");
             manosIzquierdas[i] = Buscar(modelo.transform, "hand.L");
             puestos[i] = puestosRaiz.Find("Puesto_" + i);
-            luces[i] = CrearLuzCara(cabezas[i], puestos[i]);
+            luces[i] = CrearLuzCara(cabezas[i], puestos[i].forward);
             anclas[i] = puestos[i].Find("Ojos/Mano en mano");
         }
 
@@ -96,8 +104,127 @@ public static class ConstructorPersonajes
         Debug.Log("[Personajes] Colocados en " + rutaEscena);
     }
 
+    // Bartender detrás de la barra y mesero caminando con su bandeja (Personajes_Bartender/Mesero.blend).
+    // Van en su propio objeto "PersonalBar": no se mezclan con los jugadores. Se puede volver a correr.
+    [MenuItem("LIAR GAME/Colocar bartender y mesero")]
+    public static void ConstruirPersonal()
+    {
+        if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+
+        foreach (var n in personal) ConfigurarModelo(n, enBuclePersonal);
+        var controladores = personal.Select(CrearControladorPersonal).ToArray();
+
+        var escena = EditorSceneManager.OpenScene(rutaEscena, OpenSceneMode.Single);
+        foreach (var anterior in escena.GetRootGameObjects().Where(g => g.name == "PersonalBar" || g.name.StartsWith("PersonalBar (Missing Prefab")))
+            Object.DestroyImmediate(anterior);
+        var raiz = new GameObject("PersonalBar").transform;
+
+        // la barra marca dónde va cada uno: el bartender entre el mostrador y la contrabarra, el mesero por delante
+        var barra = escena.GetRootGameObjects().FirstOrDefault(g => g.name == "BarraLicor");
+        float frenteBarra = barra ? Limites(barra).min.z : 2.3f;
+        float contrabarra = barra ? barra.GetComponentsInChildren<Renderer>().First(r => r.name == "Contrabarra").bounds.min.z : 4.0f;
+
+        // los modelos miran a +Z: el bartender gira para mirar a la mesa
+        var bartender = ColocarPersonal("Bartender", controladores[0], raiz,
+            new Vector3(-0.8f, -hundirBartender, contrabarra - 0.38f), Quaternion.Euler(0, 180, 0));
+        var comp = bartender.AddComponent<Bartender>();
+        var datos = new SerializedObject(comp);
+        datos.FindProperty("animador").objectReferenceValue = bartender.GetComponentInChildren<Animator>();
+        datos.ApplyModifiedPropertiesWithoutUndo();
+
+        // ruta del mesero: los puntos "Mesa" van donde estarán las mesas nuevas (por ahora miran a la mesa del juego)
+        var ruta = new GameObject("RutaMesero").transform;
+        ruta.SetParent(raiz, false);
+        float frente = frenteBarra - 0.42f;
+        var puntos = new (string nombre, Vector3 pos)[]
+        {
+            ("Barra", new Vector3(-1.2f, 0, frente)),
+            ("Mesa_1", new Vector3(-2.9f, 0, -1.9f)),
+            ("Mesa_2", new Vector3(2.9f, 0, -1.9f)),
+            ("Mesa_3", new Vector3(2.9f, 0, 1.0f)),
+            ("Paso_1", new Vector3(1.6f, 0, frente)),   // vuelve a la barra por delante de ella, lejos de las sillas
+        };
+        foreach (var (nombre, pos) in puntos)
+        {
+            var p = new GameObject(nombre).transform;
+            p.SetParent(ruta, false);
+            p.position = pos;
+            p.rotation = nombre == "Barra" ? Quaternion.identity : Quaternion.LookRotation(new Vector3(-pos.x, 0, -pos.z));
+        }
+
+        var mesero = ColocarPersonal("Mesero", controladores[1], raiz, puntos[0].pos, Quaternion.identity);
+        // el cuarto solo está iluminado en la mesa y la barra: una luz suave lo acompaña para que no se pierda en lo oscuro
+        var luz = new GameObject("LuzMesero").AddComponent<Light>();
+        luz.transform.SetParent(mesero.transform, false);
+        luz.transform.localPosition = new Vector3(0, 1.9f, 0.5f);
+        luz.type = LightType.Point;
+        luz.color = new Color(1f, 0.72f, 0.45f);
+        luz.intensity = 0.7f;
+        luz.range = 2.2f;
+        luz.shadows = LightShadows.None;
+        var compMesero = mesero.AddComponent<Mesero>();
+        datos = new SerializedObject(compMesero);
+        datos.FindProperty("animador").objectReferenceValue = mesero.GetComponentInChildren<Animator>();
+        datos.FindProperty("ruta").objectReferenceValue = ruta;
+        datos.FindProperty("bartender").objectReferenceValue = comp;
+        datos.ApplyModifiedPropertiesWithoutUndo();
+
+        EditorSceneManager.MarkSceneDirty(escena);
+        EditorSceneManager.SaveScene(escena);
+        Debug.Log("[Personajes] Bartender y mesero colocados en " + rutaEscena);
+    }
+
+    // Devuelve el objeto que se mueve (su +Z es hacia donde mira); el modelo va adentro girado 180 grados
+    // porque estos dos salen de Blender mirando a -Z
+    static GameObject ColocarPersonal(string nombre, AnimatorController controlador, Transform raiz, Vector3 posicion, Quaternion giro)
+    {
+        var cuerpo = new GameObject(nombre).transform;
+        cuerpo.SetParent(raiz, false);
+        cuerpo.SetPositionAndRotation(posicion, giro);
+
+        string ruta = carpeta + "/" + nombre + ".fbx";
+        var modelo = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(ruta), raiz.gameObject.scene);
+        modelo.transform.SetParent(cuerpo, false);
+        modelo.transform.localRotation = Quaternion.Euler(0, 180, 0);
+        modelo.transform.localScale = Vector3.one * escalaPersonal;
+
+        var animador = modelo.GetComponent<Animator>();
+        if (animador == null) animador = modelo.AddComponent<Animator>();
+        animador.runtimeAnimatorController = controlador;
+        animador.avatar = AssetDatabase.LoadAllAssetsAtPath(ruta).OfType<Avatar>().First();
+        animador.applyRootMotion = false;
+        animador.cullingMode = AnimatorCullingMode.CullUpdateTransforms;   // fuera de cámara no mueve huesos, pero sigue el estado
+
+        var cabeza = Buscar(modelo.transform, "head");
+        CrearLuzCara(cabeza, cuerpo.forward);
+        return cuerpo.gameObject;
+    }
+
+    // Un estado por toma, sin transiciones: Bartender y Mesero eligen qué hacer con CrossFade
+    static AnimatorController CrearControladorPersonal(string nombre)
+    {
+        var clips = AssetDatabase.LoadAllAssetsAtPath(carpeta + "/" + nombre + ".fbx").OfType<AnimationClip>()
+            .Where(c => !c.name.StartsWith("__preview__")).ToDictionary(c => c.name);
+        string rutaControlador = carpetaControladores + "/" + nombre + ".controller";
+        AssetDatabase.DeleteAsset(rutaControlador);
+        var controlador = AnimatorController.CreateAnimatorControllerAtPath(rutaControlador);
+        var maquina = controlador.layers[0].stateMachine;
+        foreach (var clip in clips.Keys.OrderBy(c => c)) Estado(maquina, clip, clips);
+        maquina.defaultState = maquina.states.First(s => s.state.name == "Esperar").state;
+        AssetDatabase.SaveAssets();
+        return controlador;
+    }
+
+    static Bounds Limites(GameObject go)
+    {
+        var rs = go.GetComponentsInChildren<Renderer>();
+        var b = rs[0].bounds;
+        foreach (var r in rs) b.Encapsulate(r.bounds);
+        return b;
+    }
+
     // Hija del hueso de la cabeza, un poco al frente y abajo de la cara: gira con ella y se mete bajo el ala
-    static Light CrearLuzCara(Transform cabeza, Transform puesto)
+    static Light CrearLuzCara(Transform cabeza, Vector3 frente)
     {
         var luz = new GameObject("LuzCara").AddComponent<Light>();
         luz.type = LightType.Point;
@@ -106,7 +233,7 @@ public static class ConstructorPersonajes
         luz.range = alcanceLuzCara;
         luz.shadows = LightShadows.None;
         luz.transform.SetParent(cabeza, false);
-        luz.transform.position = cabeza.position + puesto.forward * 0.35f + Vector3.down * 0.05f;
+        luz.transform.position = cabeza.position + frente * 0.35f + Vector3.down * 0.05f;
         return luz;
     }
 
@@ -122,7 +249,7 @@ public static class ConstructorPersonajes
     }
 
     // Rig genérico, ejes de Blender convertidos, una toma por acción y el material URP del personaje
-    static void ConfigurarModelo(string nombre)
+    static void ConfigurarModelo(string nombre, string[] bucles)
     {
         var importador = (ModelImporter)AssetImporter.GetAtPath(carpeta + "/" + nombre + ".fbx");
         importador.animationType = ModelImporterAnimationType.Generic;
@@ -158,7 +285,7 @@ public static class ConstructorPersonajes
         foreach (var clip in clips)
         {
             clip.name = clip.takeName.Split('|').Last();
-            clip.loopTime = enBucle.Contains(clip.name);
+            clip.loopTime = bucles.Contains(clip.name);
         }
         importador.clipAnimations = clips;
         importador.SaveAndReimport();
