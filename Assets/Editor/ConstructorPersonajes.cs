@@ -132,24 +132,31 @@ public static class ConstructorPersonajes
         datos.FindProperty("animador").objectReferenceValue = bartender.GetComponentInChildren<Animator>();
         datos.ApplyModifiedPropertiesWithoutUndo();
 
-        // ruta del mesero: los puntos "Mesa" van donde estarán las mesas nuevas (por ahora miran a la mesa del juego)
+        // ruta del mesero: recoge en la barra y atiende las mesas de MesasExtra (cada punto "Mesa_i" mira a su mesa);
+        // los "Paso" lo hacen rodear la mesa del juego y las sillas
         var ruta = new GameObject("RutaMesero").transform;
         ruta.SetParent(raiz, false);
         float frente = frenteBarra - 0.42f;
-        var puntos = new (string nombre, Vector3 pos)[]
+        var extras = escena.GetRootGameObjects().FirstOrDefault(g => g.name == "MesasExtra");
+        Vector3 MesaExtra(int i, Vector3 siNoHay) => extras && extras.transform.Find("Mesa_" + i) ? extras.transform.Find("Mesa_" + i).position : siNoHay;
+        var puntos = new (string nombre, Vector3 pos, Vector3 mira)[]
         {
-            ("Barra", new Vector3(-1.2f, 0, frente)),
-            ("Mesa_1", new Vector3(-2.9f, 0, -1.9f)),
-            ("Mesa_2", new Vector3(2.9f, 0, -1.9f)),
-            ("Mesa_3", new Vector3(2.9f, 0, 1.0f)),
-            ("Paso_1", new Vector3(1.6f, 0, frente)),   // vuelve a la barra por delante de ella, lejos de las sillas
+            ("Barra", new Vector3(-1.2f, 0, frente), new Vector3(-1.2f, 0, frenteBarra)),
+            ("Paso_1", new Vector3(-2.3f, 0, 0.9f), Vector3.zero),
+            ("Mesa_1", new Vector3(-2.0f, 0, -1.05f), MesaExtra(1, Vector3.zero)),
+            ("Paso_2", new Vector3(0f, 0, -2.25f), Vector3.zero),
+            ("Mesa_2", new Vector3(2.0f, 0, -1.05f), MesaExtra(2, Vector3.zero)),
+            ("Mesa_3", new Vector3(2.0f, 0, 1.15f), MesaExtra(3, Vector3.zero)),
+            ("Paso_3", new Vector3(1.6f, 0, frente), Vector3.zero),   // vuelve a la barra por delante de ella
         };
-        foreach (var (nombre, pos) in puntos)
+        foreach (var (nombre, pos, mira) in puntos)
         {
             var p = new GameObject(nombre).transform;
             p.SetParent(ruta, false);
             p.position = pos;
-            p.rotation = nombre == "Barra" ? Quaternion.identity : Quaternion.LookRotation(new Vector3(-pos.x, 0, -pos.z));
+            var hacia = mira - pos;
+            hacia.y = 0;
+            if (hacia.sqrMagnitude > 1e-4f) p.rotation = Quaternion.LookRotation(hacia);
         }
 
         var mesero = ColocarPersonal("Mesero", controladores[1], raiz, puntos[0].pos, Quaternion.identity);
