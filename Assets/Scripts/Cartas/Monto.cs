@@ -43,6 +43,55 @@ public class Monto : MonoBehaviour
         if (!enElAire.Contains(carta)) carta.BocaArriba = true;
     }
 
+    [Header("Exhibir (carta acusada)")]
+    [SerializeField] float alturaExhibir = 0.22f;      // metros sobre el monto
+    [SerializeField] float escalaExhibir = 1.8f;
+    [SerializeField] float vueltasExhibir = 2f;        // giros por todo el recorrido (a velocidad base): así todos la ven derecha
+    [SerializeField] float giroArriba = 2f;            // mientras está arriba gira este tanto más rápido
+
+    // Levanta la carta sobre el centro de la mesa, boca arriba y girando, para que toda la mesa la vea,
+    // y la vuelve a dejar en el monto (boca arriba). Tarda "subir" en llegar arriba, se queda "arriba"
+    // segundos y tarda "bajar" en volver. Se puede esperar con yield.
+    public Coroutine Exhibir(CartaVisual carta, float subir, float arriba, float bajar)
+    {
+        if (carta == null || !cartas.Contains(carta)) return null;
+        porVoltear.Add(carta);
+        return StartCoroutine(RutinaExhibir(carta, subir, arriba, bajar));
+    }
+
+    IEnumerator RutinaExhibir(CartaVisual carta, float subir, float quieta, float bajar)
+    {
+        while (enElAire.Contains(carta)) yield return null;   // si todavía venía volando, que aterrice primero
+
+        var t = carta.transform;
+        Vector3 posMesa = t.localPosition;
+        float giroMesa = t.localEulerAngles.y;
+        float yaw = giroMesa;
+        Vector3 posArriba = posMesa + transform.InverseTransformDirection(Vector3.up) * alturaExhibir;
+        float segundos = subir + quieta + bajar;
+
+        for (float tiempo = 0f; tiempo < segundos; tiempo += Time.deltaTime)
+        {
+            // 0 → 1 al subir, 1 mientras está arriba, 1 → 0 al bajar
+            float arriba = tiempo < subir ? tiempo / Mathf.Max(subir, 0.01f)
+                         : tiempo > segundos - bajar ? (segundos - tiempo) / Mathf.Max(bajar, 0.01f)
+                         : 1f;
+            arriba = Mathf.SmoothStep(0f, 1f, arriba);
+
+            // velocidad base, que sube suave hasta "giroArriba" veces mientras la carta está arriba
+            yaw += 360f * vueltasExhibir / segundos * Mathf.Lerp(1f, giroArriba, arriba) * Time.deltaTime;
+            float volteo = Mathf.Lerp(0f, 180f, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(tiempo / Mathf.Max(subir, 0.01f))));   // se da vuelta al subir
+            t.localPosition = Vector3.Lerp(posMesa, posArriba, arriba);
+            t.localRotation = Quaternion.Euler(0f, yaw, volteo);
+            t.localScale = Vector3.one * Mathf.Lerp(1f, escalaExhibir, arriba);
+            yield return null;
+        }
+
+        t.localPosition = posMesa;
+        t.localRotation = Quaternion.Euler(0f, yaw, 180f);   // queda boca arriba en el monto, como terminó de girar
+        t.localScale = Vector3.one;
+    }
+
     // Quita todas las cartas del monto (para un reparto nuevo)
     public void Recoger()
     {
@@ -85,6 +134,7 @@ public class Monto : MonoBehaviour
         t.localScale = Vector3.one;
         enElAire.Remove(carta);
         if (porVoltear.Contains(carta)) carta.BocaArriba = true;
+        Sonidos.Tirar();   // la carta pega contra el paño
 
         alRecibir.Invoke(carta);
     }

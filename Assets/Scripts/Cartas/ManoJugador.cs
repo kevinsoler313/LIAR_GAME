@@ -86,7 +86,7 @@ public class ManoJugador : MonoBehaviour
     // Solo en la mano de este equipo: flechas para elegir, E para tirar, Espacio para bajar/levantar
     void LeerTeclado()
     {
-        if (Keyboard.current == null || SelectorOpciones.BloqueaEntrada) return;   // eligiendo la opción de un poder
+        if (Keyboard.current == null || SelectorOpciones.BloqueaEntrada || MenuPausa.Abierto) return;   // eligiendo la opción de un poder
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
             if (EnMano) Bajar();
@@ -95,8 +95,8 @@ public class ManoJugador : MonoBehaviour
         }
         if (!EnMano) return;
 
-        if (Keyboard.current.rightArrowKey.wasPressedThisFrame) Seleccionar(IndiceSeleccionado + 1);
-        if (Keyboard.current.leftArrowKey.wasPressedThisFrame) Seleccionar(IndiceSeleccionado - 1);
+        if (Keyboard.current.rightArrowKey.wasPressedThisFrame) CambiarSeleccion(IndiceSeleccionado + 1);
+        if (Keyboard.current.leftArrowKey.wasPressedThisFrame) CambiarSeleccion(IndiceSeleccionado - 1);
         if (Keyboard.current.eKey.wasPressedThisFrame) JugarSeleccionada();
     }
 
@@ -131,6 +131,14 @@ public class ManoJugador : MonoBehaviour
     }
 
     public void Seleccionar(int indice) => IndiceSeleccionado = Mathf.Clamp(indice, 0, Mathf.Max(0, cartas.Count - 1));
+
+    // Con las flechas: suena solo si de verdad cambió (en los bordes no hace nada)
+    void CambiarSeleccion(int indice)
+    {
+        int antes = IndiceSeleccionado;
+        Seleccionar(indice);
+        if (IndiceSeleccionado != antes) Sonidos.Seleccionar();
+    }
 
     // Manda la carta seleccionada a la mesa: los poderes a su pila boca arriba, el resto al monto boca abajo.
     // Si es un poder, primero se aplica su regla (que puede preguntar algo al jugador).
@@ -279,6 +287,12 @@ public class ManoJugador : MonoBehaviour
         {
             int i = aLaMano ? cartas.Count - 1 - n : n;
             ultima = StartCoroutine(Volar(cartas[i], i, aLaMano));
+            // solo la mano de este equipo: las de los demás se levantan a la vez y serían puro ruido
+            if (esJugadorLocal)
+            {
+                if (aLaMano) Sonidos.Levantar();
+                else Sonidos.Bajar();
+            }
             yield return new WaitForSeconds(intervalo);
         }
         yield return ultima;

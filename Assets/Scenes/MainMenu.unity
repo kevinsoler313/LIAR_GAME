@@ -7652,7 +7652,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MusicaFondo
   cancion: {fileID: 8300000, guid: 8559bf988d64f454692e98aea9105f66, type: 3}
-  volumen: 0.5
+  volumen: 0.04
+  duracionFundido: 1.5
 --- !u!82 &1055319934
 AudioSource:
   m_ObjectHideFlags: 0

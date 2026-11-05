@@ -5,7 +5,7 @@ using TMPro;
 
 // Animación de hover/clic para los botones del menú: crece un poco, se ilumina el fondo,
 // cambia el color del texto y aparece un resplandor de farol detrás.
-public class BotonAnimado : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
+public class BotonAnimado : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IPointerClickHandler
 {
     [Header("Escala")]
     [SerializeField] float escalaHover = 1.06f;
@@ -22,6 +22,7 @@ public class BotonAnimado : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     [SerializeField] Graphic resplandor;              // imagen de brillo detrás del botón (opcional)
     [SerializeField] float alfaResplandor = 0.55f;
 
+    Selectable boton;
     Color fondoNormal, textoNormal;
     Vector3 escalaBase;
     bool encima, presionado;
@@ -30,6 +31,7 @@ public class BotonAnimado : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     void Awake()
     {
         escalaBase = transform.localScale;
+        boton = GetComponent<Selectable>();
         if (fondo != null) fondoNormal = fondo.color;
         if (texto != null) textoNormal = texto.color;
         if (resplandor != null) resplandor.canvasRenderer.SetAlpha(0f);
@@ -62,8 +64,19 @@ public class BotonAnimado : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
         if (resplandor != null) resplandor.canvasRenderer.SetAlpha(alfaResplandor * t);
     }
 
-    public void OnPointerEnter(PointerEventData e) => encima = true;
+    // los sonidos solo suenan si el botón se puede usar
+    bool Activo => boton == null || boton.IsInteractable();
+
+    public void OnPointerEnter(PointerEventData e)
+    {
+        encima = true;
+        if (Activo) Sonidos.Hover();
+    }
     public void OnPointerExit(PointerEventData e) { encima = false; presionado = false; }
     public void OnPointerDown(PointerEventData e) => presionado = true;
     public void OnPointerUp(PointerEventData e) => presionado = false;
+    public void OnPointerClick(PointerEventData e)
+    {
+        if (Activo) Sonidos.Clic();
+    }
 }

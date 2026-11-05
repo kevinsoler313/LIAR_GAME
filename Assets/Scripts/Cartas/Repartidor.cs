@@ -81,6 +81,7 @@ public class Repartidor : MonoBehaviour
                 int indice = cartasEnMano[j].Count;
                 cartasEnMano[j].Add(carta);
                 vuelos.Add(StartCoroutine(Volar(carta, manos[j], indice)));
+                Sonidos.Repartir();
                 yield return new WaitForSeconds(intervalo);
             }
 
@@ -122,4 +123,7 @@ public class Repartidor : MonoBehaviour
         t.localRotation = giroHasta;
     }
     public void FijarActivos(bool[] nuevos) => activos = nuevos;
+
+    // En red, cuántas cartas se reparten lo decide el host (PartidaRed), no este componente
+    public void FijarCartasPorJugador(int cantidad) => cartasPorJugador = cantidad;
 }

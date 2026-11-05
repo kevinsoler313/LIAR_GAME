@@ -94,7 +94,7 @@ public class SelectorOpciones : MonoBehaviour
 
     void Update()
     {
-        if (!Abierto) return;
+        if (!Abierto || MenuPausa.Abierto) return;
 
         // la opción bajo el mouse queda elegida
         if (Mouse.current != null && Mouse.current.delta.ReadValue() != Vector2.zero)

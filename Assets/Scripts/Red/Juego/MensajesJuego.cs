@@ -4,7 +4,8 @@ using System;
 // Si agregas un mensaje nuevo, va aquí.
 public static class TiposJuego
 {
-    public const string Sillas = "juego.sillas";         // host → todos: quién está sentado en cada silla
+    public const string Sillas = "juego.sillas";         // host → todos: quién está sentado en cada silla (y cómo se llama)
+    public const string Nombre = "juego.nombre";         // jugador → host: "me llamo así" (al conectarse)
     public const string Estado = "juego.estado";         // host → todos: si la partida va, de quién es el turno y quién ganó
     public const string Reparto = "juego.reparto";       // host → UN jugador: sus cartas (privado)
     public const string Jugar = "juego.jugar";           // jugador → host: "quiero jugar esta carta"
@@ -13,17 +14,27 @@ public static class TiposJuego
     public const string Acusar = "juego.acusar";         // jugador → host: "¡Mentiroso!" (a la última carta del monto)
     public const string Acusacion = "juego.acusacion";   // host → todos: el resultado de la acusación
     public const string Comer = "juego.comer";           // host → UN jugador: qué cartas se comió (privado)
-    public const string Castigo = "juego.castigo";       // host → todos: alguien quiso ganar con un poder y se come cartas
+    public const string Castigo = "juego.castigo";       // host → todos: alguien se come cartas (quiso ganar con un poder, solo tenía poderes o se le acabó el tiempo)
 }
 [Serializable]
 public class DatosCastigo{
     public int silla;
     public int cantidad =3;
+    public bool alEmpezarTurno;   // true = le llegó el turno con solo poderes; false = intentó ganar tirando un poder
+    public bool porTiempo;        // true = se le acabó el tiempo del turno: come y el turno pasa a "turno"
+    public int turno = -1;        // solo con porTiempo: a quién le toca ahora
 }
 [Serializable]
 public class DatosSillas
 {
     public int[] idPorSilla;   // idPorSilla[2] = id del jugador sentado en la silla 2, o -1 si está libre
+    public string[] nombrePorSilla;   // el nombre de cada silla ("" si está libre)
+}
+
+[Serializable]
+public class DatosNombre
+{
+    public string nombre;
 }
 
 [Serializable]

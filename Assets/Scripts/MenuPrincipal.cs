@@ -25,6 +25,8 @@ public class MenuPrincipal : MonoBehaviour
 
         if (Application.platform == RuntimePlatform.WebGLPlayer && botonSalir != null)
             botonSalir.SetActive(false);
+
+        if (MenuRed.IPAutoUnirse != null) Jugar();   // modo prueba: directo a la sala para unirse sola
     }
 
     void Update()
