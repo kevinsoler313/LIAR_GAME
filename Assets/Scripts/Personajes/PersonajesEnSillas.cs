@@ -41,6 +41,10 @@ public class PersonajesEnSillas : MonoBehaviour
     [SerializeField] float segundosAcusacion = 3f;
     [SerializeField, Range(0f, 1f)] float atencionAlTurno = 0.55f;   // fracción del tiempo que mira a quien juega
     [SerializeField] Vector2 segundosEntreTragos = new Vector2(12f, 28f);
+    [Header("Abanico (cartas en las manos de los demás)")]
+    [SerializeField] float gradosEntreCartas = 9f;
+    [SerializeField] float aperturaMaxima = 70f;      // con muchas cartas se juntan más para no pasar de esto
+    [SerializeField] float radioAbanico = 0.07f;      // las cartas giran desde un punto así de abajo (donde las pellizcan)
 
     static readonly int miTurno = Animator.StringToHash("MiTurno");
     static readonly int beber = Animator.StringToHash("Beber");
@@ -215,6 +219,7 @@ public class PersonajesEnSillas : MonoBehaviour
                     var destino = manosIzquierdas[i].position + p.right * cartasDesdeMano.x
                                 + Vector3.up * cartasDesdeMano.y + p.forward * cartasDesdeMano.z;
                     ancla.position = Vector3.Lerp(ancla.position, destino, paso);
+                    Abanico(manos[i]);
                 }
                 else ancla.localPosition = anclaOriginal[i];
             }
@@ -230,6 +235,27 @@ public class PersonajesEnSillas : MonoBehaviour
             var giro = Quaternion.FromToRotation(actual, miradaActual[i] - cabeza.position);
             giro = Quaternion.RotateTowards(Quaternion.identity, giro, giroCabezaMax);
             cabeza.rotation = Quaternion.Slerp(Quaternion.identity, giro, pesoMirada[i]) * cabeza.rotation;
+        }
+    }
+
+    // ManoJugador arma la fila recta y separada que se lee bien en la pantalla de este equipo; en las manos
+    // de los demás esa fila parecía una tabla. Aquí (después de su Update) se dibujan en abanico, abiertas desde
+    // abajo como se sostienen las cartas. Solo cambia dónde se ven: la mano, el orden y la partida son los mismos.
+    void Abanico(ManoJugador mano)
+    {
+        if (mano == null || !mano.EnMano || mano.Moviendo) return;
+        var cartas = mano.Cartas;
+        int n = cartas.Count;
+        float paso = n > 1 ? Mathf.Min(gradosEntreCartas, aperturaMaxima / (n - 1)) : 0f;
+        var deFrente = Quaternion.LookRotation(Vector3.up, Vector3.forward);   // la misma orientación que les da ManoJugador
+        var abajo = new Vector3(0f, radioAbanico, 0f);
+        for (int k = 0; k < n; k++)
+        {
+            var t = cartas[k].transform;
+            if (t.localPosition.sqrMagnitude > 0.25f * 0.25f) continue;   // todavía viene volando desde el mazo
+            var giro = Quaternion.AngleAxis(-(k - (n - 1) * 0.5f) * paso, Vector3.forward);
+            t.localPosition = giro * abajo - abajo + new Vector3(0f, 0f, -0.0015f * k);
+            t.localRotation = giro * deFrente;
         }
     }
 
