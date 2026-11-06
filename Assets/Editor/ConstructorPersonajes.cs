@@ -49,11 +49,15 @@ public static class ConstructorPersonajes
     const string carpetaMaterialesBillar = "Assets/Models/Ambiente/Billar/Materiales";
     // de los pies del que tira al centro de la blanca: la punta del taco la toca justo en el tiro (Tirar de lyer_billar.py)
     const float distanciaTiro = 0.825f;
-    static readonly (string modelo, string accion, Vector3 donde, Vector3 mira)[] jugadoresBillar =
+    // Tiran por turnos (TurnosBillar). Cada uno tiene el punto donde le queda la blanca y hacia dónde tira (locales a
+    // "Billar"); se para a distanciaTiro detrás de ese punto. El primero tira desde la punta hacia el segundo punto
+    // (la bola queda en su línea); los otros dos tiran desde el lado del salón y la bola rebota en la banda de la pared.
+    // El primer punto es donde viene la blanca en el modelo (su z se lee de la mesa); el triángulo está en la otra punta.
+    static readonly (string modelo, float zBola, Vector3 tira)[] jugadoresBillar =
     {
-        ("Cliente_Billar", "Tirar", new Vector3(0.93f, 0, -0.25f), new Vector3(0, 0, -0.25f)),
-        ("Clienta_Billar", "Esperar_Taco", new Vector3(0, 0, 1.5f), Vector3.zero),
-        ("Cliente_Billar", "Esperar_Taco", new Vector3(1.1f, 0, 1.25f), new Vector3(0, 0, 0.3f)),
+        ("Cliente_Billar", float.NaN, Vector3.forward),
+        ("Clienta_Billar", -0.25f, Vector3.left),
+        ("Cliente_Billar", 0.32f, Vector3.left),
     };
     // su animación apoya las manos en una barra de 1,07 m (x0,9 = 0,96 m) y la barra del bar quedó a 0,83 m:
     // se hunde detrás del mostrador, que le tapa los pies
@@ -240,31 +244,33 @@ public static class ConstructorPersonajes
                 ConfigurarModelo(n, enBuclePersonal);
                 return CrearControladorPersonal(n);
             });
-            // el que tira se para frente a la bola blanca, a la distancia en que la punta del taco la toca en el tiro
-            var blanca = billar.GetComponentsInChildren<Transform>().FirstOrDefault(x => x.name == "Bola_0");
-            int b = 0;
-            foreach (var (modelo, accion, dondeBase, miraBase) in jugadoresBillar)
+            var blanca = billar.GetComponentsInChildren<Transform>().First(x => x.name == "Bola_0");
+            blanca.gameObject.isStatic = false;   // estática, Unity la junta con la mesa y no se puede mover
+            var enMesa = billar.transform.InverseTransformPoint(blanca.position);
+            var puntosBola = new Vector3[jugadoresBillar.Length];
+            var turnos = new Billarista[jugadoresBillar.Length];
+            for (int b = 0; b < jugadoresBillar.Length; b++)
             {
-                var (donde, mira) = (dondeBase, miraBase);
-                bool tira = accion == "Tirar" && blanca != null;
-                if (tira)
-                {
-                    float z = billar.transform.InverseTransformPoint(blanca.GetComponent<Renderer>().bounds.center).z;
-                    (donde, mira) = (new Vector3(distanciaTiro, 0, z), new Vector3(0, 0, z));
-                }
-                var pos = billar.transform.TransformPoint(donde);
-                var hacia = billar.transform.TransformPoint(mira) - pos;
-                hacia.y = 0;
+                var (modelo, zBola, tira) = jugadoresBillar[b];
+                puntosBola[b] = new Vector3(0f, enMesa.y, float.IsNaN(zBola) ? enMesa.z : zBola);
+                var pos = billar.transform.TransformPoint(puntosBola[b] - tira * distanciaTiro);
                 pos.y = 0;
-                var j = ColocarPersonal(modelo, controladoresBillar[modelo], raiz, pos, Quaternion.LookRotation(hacia));
-                j.name = "Billar_" + (++b) + "_" + modelo.Replace(sufijoBillar, "");
-                var compBillar = j.AddComponent<Billarista>();
-                datos = new SerializedObject(compBillar);
+                var j = ColocarPersonal(modelo, controladoresBillar[modelo], raiz, pos, Quaternion.LookRotation(billar.transform.TransformDirection(tira)));
+                j.name = "Billar_" + (b + 1) + "_" + modelo.Replace(sufijoBillar, "");
+                turnos[b] = j.AddComponent<Billarista>();
+                datos = new SerializedObject(turnos[b]);
                 datos.FindProperty("animador").objectReferenceValue = j.GetComponentInChildren<Animator>();
-                datos.FindProperty("accion").stringValue = accion;
-                if (tira) datos.FindProperty("bola").objectReferenceValue = blanca;
                 datos.ApplyModifiedPropertiesWithoutUndo();
             }
+            var anterior = billar.GetComponent<TurnosBillar>();
+            if (anterior) Object.DestroyImmediate(anterior);
+            datos = new SerializedObject(billar.AddComponent<TurnosBillar>());
+            Llenar(datos, "jugadores", turnos);
+            var lista = datos.FindProperty("puntosBola");
+            lista.arraySize = puntosBola.Length;
+            for (int b = 0; b < puntosBola.Length; b++) lista.GetArrayElementAtIndex(b).vector3Value = puntosBola[b];
+            datos.FindProperty("bola").objectReferenceValue = blanca;
+            datos.ApplyModifiedPropertiesWithoutUndo();
         }
 
         EditorSceneManager.MarkSceneDirty(escena);
