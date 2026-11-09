@@ -22,7 +22,16 @@ public static class Sonidos
     public static void TuTurno() => Tocar("TuTurno", 0.55f);
 
     // "¡Mentiroso!"
-    public static void Mentiroso() => Tocar("Mentiroso", 1f);
+    public static void Mentiroso()
+    {
+        int i = Random.Range(0, gritos.Length);
+        if (gritos.Length > 1 && i == ultimoGrito) i = (i + 1) % gritos.Length;   // que no repita el anterior
+        ultimoGrito = i;
+        Tocar(gritos[i], 1f);
+    }
+
+    static readonly string[] gritos = { "Mentiroso", "Mentiroso_2", "Mentiroso_3", "Mentiroso_4" };
+    static int ultimoGrito = -1;
 
     // Varias fuentes que se turnan: al repartir suenan muchas cartas seguidas
     // y cada una puede llevar su propio tono sin cambiarle el tono a las que siguen sonando.

@@ -6,12 +6,15 @@ using UnityEngine;
 // al volver a la sala; la música del menú (MusicaFondo) hace justo lo contrario.
 // Las canciones se barajan como un mazo: suenan todas antes de que se repita alguna, y al rebarajar
 // nunca vuelve a empezar con la que acaba de sonar. Los filtros de este mismo objeto
-// (paso alto, paso bajo, distorsión) son los mismos de la música del menú: radio vieja de bar.
+// (distorsión, paso alto, paso bajo) la hacen sonar como un bafle viejo.
+// La distorsión solo rompe el sonido si le llega fuerte, así que la fuente va a volumen completo
+// y el volumen real se aplica al final, en OnAudioFilterRead: este componente va después de los filtros.
 [RequireComponent(typeof(AudioSource))]
 public class MusicaPartida : MonoBehaviour
 {
     [SerializeField] AudioClip[] canciones;
-    [SerializeField, Range(0f, 1f)] float volumen = 0.02f;   // por debajo de la del menú: que no tape las cartas
+    [SerializeField, Range(0f, 1f)] float volumen = 0.04f;   // igual que la del menú: que no tape las cartas
+    [SerializeField, Range(0f, 1f)] float compensacionBafle = 0.2f;   // la distorsión sube mucho el nivel: esto lo devuelve a un 'volumen' normal
     [SerializeField] float duracionFundido = 1.5f;
     [SerializeField] float pausaEntreCanciones = 1.5f;       // silencio entre una y otra
 
@@ -20,6 +23,8 @@ public class MusicaPartida : MonoBehaviour
     Coroutine rutina;
     int[] orden;
     int siguiente;
+    float ganancia;   // volumen actual, con los fundidos: lo lee el hilo de audio
+    float compensacion;   // copia de compensacionBafle para el hilo de audio
 
     void Awake()
     {
@@ -28,7 +33,8 @@ public class MusicaPartida : MonoBehaviour
         fuente.playOnAwake = false;
         fuente.loop = false;
         fuente.spatialBlend = 0f;   // 2D
-        fuente.volume = 0f;
+        fuente.volume = 1f;
+        compensacion = compensacionBafle;
     }
 
     void OnDestroy()
@@ -56,7 +62,7 @@ public class MusicaPartida : MonoBehaviour
     {
         if (!fuente.isPlaying)   // si venía apagándose, sigue la misma canción
         {
-            fuente.volume = 0f;
+            ganancia = 0f;
             fuente.clip = Siguiente();
             fuente.Play();
         }
@@ -68,25 +74,31 @@ public class MusicaPartida : MonoBehaviour
             while (fuente.isPlaying || AudioListener.pause) yield return null;
             yield return new WaitForSecondsRealtime(pausaEntreCanciones);
             fuente.clip = Siguiente();
-            fuente.volume = volumen;
+            ganancia = volumen;
             fuente.Play();
         }
     }
 
     IEnumerator Fundir(float objetivo)
     {
-        float inicial = fuente.volume;
+        float inicial = ganancia;
         for (float t = 0f; t < duracionFundido; t += Time.unscaledDeltaTime)
         {
-            fuente.volume = Mathf.Lerp(inicial, objetivo, t / duracionFundido);
+            ganancia = Mathf.Lerp(inicial, objetivo, t / duracionFundido);
             yield return null;
         }
-        fuente.volume = objetivo;
+        ganancia = objetivo;
         if (objetivo == 0f)
         {
             fuente.Stop();
             rutina = null;
         }
+    }
+
+    void OnAudioFilterRead(float[] datos, int canales)
+    {
+        float g = ganancia * compensacion;
+        for (int i = 0; i < datos.Length; i++) datos[i] *= g;
     }
 
     AudioClip Siguiente()
