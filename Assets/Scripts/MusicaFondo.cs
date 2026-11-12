@@ -47,9 +47,19 @@ public class MusicaFondo : MonoBehaviour
     }
 
     // Cualquier escena que se carga empieza en un menú (MainMenu o la sala del Bar), así que la música vuelve
-    void AlCargarEscena(Scene escena, LoadSceneMode modo) => Encender();
-
-    // Empieza la partida con cartas
+    // Reemplaza la línea: void AlCargarEscena(Scene escena, LoadSceneMode modo) => Encender();
+    // Por esto:
+    void AlCargarEscena(Scene escena, LoadSceneMode modo)
+    {
+        if (escena.name == "Bar")
+        {
+            Apagar(); // Ejecuta el fundido para silenciar esta música al entrar al bar
+        }
+        else
+        {
+            Encender(); // Enciende la música si está en MainMenu u otra escena
+        }
+    }
     public static void Apagar()
     {
         if (instancia == null || instancia.apagada) return;

@@ -38,11 +38,27 @@ public static class ConstructorPersonajes
 
     // Bartender y mesero, de pie (Saludar y Entregar son de una vez)
     static readonly string[] personal = { "Bartender", "Mesero" };
-    static readonly string[] enBuclePersonal = { "Limpiar_Vaso", "Limpiar_Barra", "Esperar", "Caminar", "Charlar" };
+    static readonly string[] enBuclePersonal = { "Limpiar_Vaso", "Limpiar_Barra", "Esperar", "Caminar", "Charlar", "Tirar", "Esperar_Taco" };
     // clientes sentados (Personajes_Cliente/Clienta.blend): salen con la silla en el origen y la mesa al frente,
     // a la distancia de cada uno (la clienta tiene los brazos más cortos y se sienta más cerca)
     static readonly (string nombre, float distanciaMesa)[] clientes = { ("Cliente", 0.9f), ("Clienta", 0.85f) };
     const float escalaPersonal = 0.9f;      // como los jugadores
+    // tres jugando billar alrededor del objeto "Billar" (centro de la mesa; su Z es el largo y su +X el lado del salón).
+    // Personajes_Cliente_Billar/Clienta_Billar.blend: de pie con su taco, acciones Tirar y Esperar_Taco
+    const string sufijoBillar = "_Billar";
+    const string carpetaMaterialesBillar = "Assets/Models/Ambiente/Billar/Materiales";
+    // de los pies del que tira al centro de la blanca: la punta del taco la toca justo en el tiro (Tirar de lyer_billar.py)
+    const float distanciaTiro = 0.825f;
+    // Tiran por turnos (TurnosBillar). Cada uno tiene el punto donde le queda la blanca y hacia dónde tira (locales a
+    // "Billar"); se para a distanciaTiro detrás de ese punto. El primero tira desde la punta hacia el segundo punto
+    // (la bola queda en su línea); los otros dos tiran desde el lado del salón y la bola rebota en la banda de la pared.
+    // El primer punto es donde viene la blanca en el modelo (su z se lee de la mesa); el triángulo está en la otra punta.
+    static readonly (string modelo, float zBola, Vector3 tira)[] jugadoresBillar =
+    {
+        ("Cliente_Billar", float.NaN, Vector3.forward),
+        ("Clienta_Billar", -0.25f, Vector3.left),
+        ("Cliente_Billar", 0.32f, Vector3.left),
+    };
     // su animación apoya las manos en una barra de 1,07 m (x0,9 = 0,96 m) y la barra del bar quedó a 0,83 m:
     // se hunde detrás del mostrador, que le tapa los pies
     const float hundirBartender = 0.13f;
@@ -117,7 +133,7 @@ public static class ConstructorPersonajes
         Debug.Log("[Personajes] Colocados en " + rutaEscena);
     }
 
-    // Bartender detrás de la barra, mesero caminando con su bandeja y clientes en las mesas nuevas
+    // Bartender detrás de la barra, mesero caminando con su bandeja, clientes en las mesas nuevas y tres jugando billar
     // (Personajes_Bartender/Mesero/Cliente/Clienta.blend). Van en su propio objeto "PersonalBar": no se mezclan con los jugadores. Se puede volver a correr.
     [MenuItem("LIAR GAME/Colocar bartender y mesero")]
     public static void ConstruirPersonal()
@@ -155,7 +171,7 @@ public static class ConstructorPersonajes
         var puntos = new (string nombre, Vector3 pos, Vector3 mira)[]
         {
             ("Barra", new Vector3(-1.2f, 0, frente), new Vector3(-1.2f, 0, frenteBarra)),
-            ("Paso_1", new Vector3(-2.3f, 0, 0.9f), Vector3.zero),
+            ("Paso_1", new Vector3(-1.55f, 0, 0.9f), Vector3.zero),   // entre la mesa del juego y los de billar
             ("Mesa_1", new Vector3(-2.0f, 0, -1.05f), MesaExtra(1, Vector3.zero)),
             ("Paso_2", new Vector3(0f, 0, -2.25f), Vector3.zero),
             ("Mesa_2", new Vector3(2.0f, 0, -1.05f), MesaExtra(2, Vector3.zero)),
@@ -220,9 +236,46 @@ public static class ConstructorPersonajes
             }
         }
 
+        var billar = escena.GetRootGameObjects().FirstOrDefault(g => g.name == "Billar");
+        if (billar)
+        {
+            var controladoresBillar = jugadoresBillar.Select(j => j.modelo).Distinct().ToDictionary(n => n, n =>
+            {
+                ConfigurarModelo(n, enBuclePersonal);
+                return CrearControladorPersonal(n);
+            });
+            var blanca = billar.GetComponentsInChildren<Transform>().First(x => x.name == "Bola_0");
+            blanca.gameObject.isStatic = false;   // estática, Unity la junta con la mesa y no se puede mover
+            var enMesa = billar.transform.InverseTransformPoint(blanca.position);
+            var puntosBola = new Vector3[jugadoresBillar.Length];
+            var turnos = new Billarista[jugadoresBillar.Length];
+            for (int b = 0; b < jugadoresBillar.Length; b++)
+            {
+                var (modelo, zBola, tira) = jugadoresBillar[b];
+                puntosBola[b] = new Vector3(0f, enMesa.y, float.IsNaN(zBola) ? enMesa.z : zBola);
+                var pos = billar.transform.TransformPoint(puntosBola[b] - tira * distanciaTiro);
+                pos.y = 0;
+                var j = ColocarPersonal(modelo, controladoresBillar[modelo], raiz, pos, Quaternion.LookRotation(billar.transform.TransformDirection(tira)));
+                j.name = "Billar_" + (b + 1) + "_" + modelo.Replace(sufijoBillar, "");
+                turnos[b] = j.AddComponent<Billarista>();
+                datos = new SerializedObject(turnos[b]);
+                datos.FindProperty("animador").objectReferenceValue = j.GetComponentInChildren<Animator>();
+                datos.ApplyModifiedPropertiesWithoutUndo();
+            }
+            var anterior = billar.GetComponent<TurnosBillar>();
+            if (anterior) Object.DestroyImmediate(anterior);
+            datos = new SerializedObject(billar.AddComponent<TurnosBillar>());
+            Llenar(datos, "jugadores", turnos);
+            var lista = datos.FindProperty("puntosBola");
+            lista.arraySize = puntosBola.Length;
+            for (int b = 0; b < puntosBola.Length; b++) lista.GetArrayElementAtIndex(b).vector3Value = puntosBola[b];
+            datos.FindProperty("bola").objectReferenceValue = blanca;
+            datos.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         EditorSceneManager.MarkSceneDirty(escena);
         EditorSceneManager.SaveScene(escena);
-        Debug.Log("[Personajes] Bartender, mesero y clientes colocados en " + rutaEscena);
+        Debug.Log("[Personajes] Bartender, mesero, clientes y billar colocados en " + rutaEscena);
     }
 
     // Devuelve el objeto que se mueve (su +Z es hacia donde mira); el modelo va adentro girado 180 grados
@@ -313,25 +366,35 @@ public static class ConstructorPersonajes
 
         if (!AssetDatabase.IsValidFolder(carpetaMateriales))
             AssetDatabase.CreateFolder(carpeta, "Materiales");
-        string rutaMaterial = carpetaMateriales + "/" + nombre + ".mat";
+        // los jugadores de billar (Cliente_Billar...) son el mismo modelo del cliente: usan su material y su textura
+        string base_ = nombre.EndsWith(sufijoBillar) ? nombre.Substring(0, nombre.Length - sufijoBillar.Length) : nombre;
+        string rutaMaterial = carpetaMateriales + "/" + base_ + ".mat";
         var material = AssetDatabase.LoadAssetAtPath<Material>(rutaMaterial);
         if (material == null)
         {
             material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
             AssetDatabase.CreateAsset(material, rutaMaterial);
         }
-        material.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(carpeta + "/Texturas/" + nombre + ".png"));
+        material.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(carpeta + "/Texturas/" + base_ + ".png"));
         material.SetColor("_BaseColor", Color.white);
         material.SetFloat("_Smoothness", 0.15f);
-        AsignarNormal(material, carpeta + "/Texturas/" + nombre + "_normal.png");
+        AsignarNormal(material, carpeta + "/Texturas/" + base_ + "_normal.png");
         // sin emisión (la cara la ilumina su LuzCara)
         material.SetTexture("_EmissionMap", null);
         material.SetColor("_EmissionColor", Color.black);
         material.DisableKeyword("_EMISSION");
         EditorUtility.SetDirty(material);
         importador.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), nombre), material);
-        foreach (var m in materialesBotella)
-            importador.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), m.blender), MaterialBotella(m));
+        if (nombres.Contains(nombre))   // solo los de la mesa del juego traen botella
+            foreach (var m in materialesBotella)
+                importador.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), m.blender), MaterialBotella(m));
+        // el taco usa los mismos materiales que la mesa de billar (Taco_Arce, Billar_Laton...)
+        if (nombre.EndsWith(sufijoBillar) && AssetDatabase.IsValidFolder(carpetaMaterialesBillar))
+            foreach (var guid in AssetDatabase.FindAssets("t:Material", new[] { carpetaMaterialesBillar }))
+            {
+                var m = AssetDatabase.LoadAssetAtPath<Material>(AssetDatabase.GUIDToAssetPath(guid));
+                importador.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), m.name), m);
+            }
 
         // Blender nombra cada toma "<nombre>_Rig|<acción>": el clip se queda solo con la acción
         var clips = importador.defaultClipAnimations;
