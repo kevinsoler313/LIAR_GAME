@@ -3,7 +3,7 @@ using UnityEngine;
 public enum TipoCarta { Numero, Pass, Return, Break, Comodin }
 
 // Una carta de la baraja: qué es y cómo se ve. Se crea una por diseño (1–10, poderes, comodín).
-[CreateAssetMenu(menuName = "LIAR GAME/Carta", fileName = "Carta")]
+[CreateAssetMenu(menuName = "TAHÚR GAME/Carta", fileName = "Carta")]
 public class CartaDatos : ScriptableObject
 {
     public TipoCarta tipo;

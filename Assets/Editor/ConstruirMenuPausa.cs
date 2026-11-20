@@ -10,7 +10,7 @@ using UnityEngine.UI;
 
 // Arma en la escena Bar el menú de pausa (botón redondo arriba a la izquierda + menú + instrucciones)
 // con el mismo estilo de los demás menús. Se puede volver a correr: borra el anterior y lo arma de nuevo.
-// Menú de Unity: LIAR GAME → Construir menú de pausa  (con la escena Bar abierta y sin Play)
+// Menú de Unity: TAHÚR GAME → Construir menú de pausa  (con la escena Bar abierta y sin Play)
 public static class ConstruirMenuPausa
 {
     const string RutaCirculo = "Assets/UI/HUD/Circulo.png";
@@ -46,7 +46,7 @@ public static class ConstruirMenuPausa
         Seccion + "CONTROLES" + FinSeccion + "\n" +
         "<b>Clic derecho + mouse</b> mirar  ·  <b>Flechas</b> elegir  ·  <b>E</b> tirar  ·  <b>M</b> ¡mentiroso!  ·  <b>H</b> ayuda  ·  <b>Esc</b> pausa";
 
-    [MenuItem("LIAR GAME/Construir menú de pausa")]
+    [MenuItem("TAHÚR GAME/Construir menú de pausa")]
     public static void Construir()
     {
         if (EditorApplication.isPlaying) { Debug.LogWarning("[MenuPausa] Detén el Play antes de construir el menú."); return; }

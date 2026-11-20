@@ -11,7 +11,7 @@ using UnityEditor.SceneManagement;
 using TMPro;
 
 // Arma la escena MainMenu con la estética de bar vaquero (la misma de la landing web).
-// Menú: LIAR GAME > Construir menú principal. Se puede volver a correr cuando quieras;
+// Menú: TAHÚR GAME > Construir menú principal. Se puede volver a correr cuando quieras;
 // si pones las fuentes en Assets/UI/Fuentes (Rye, Special Elite, Crimson Pro) las usa solas.
 public static class ConstructorMenuPrincipal
 {
@@ -39,7 +39,7 @@ public static class ConstructorMenuPrincipal
     static Sprite spriteRedondeado, spriteBorde, spriteCarta, spriteBrillo, spriteVineta;
     static Texture2D texturaMadera;
 
-    [MenuItem("LIAR GAME/Construir menú principal")]
+    [MenuItem("TAHÚR GAME/Construir menú principal")]
     public static void Construir()
     {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
@@ -130,9 +130,9 @@ public static class ConstructorMenuPrincipal
         arriba.characterSpacing = 40;
 
         // Título con relieve: dos copias desplazadas detrás hacen de sombra
-        Texto("Titulo Sombra 2", portada, "LIAR GAME", fuenteTitulos, 210, negro, new Vector2(0, 243), new Vector2(1800, 240));
-        Texto("Titulo Sombra 1", portada, "LIAR GAME", fuenteTitulos, 210, Hex("5a3f17"), new Vector2(0, 249), new Vector2(1800, 240));
-        Texto("Titulo", portada, "LIAR GAME", fuenteTitulos, 210, mostaza, new Vector2(0, 255), new Vector2(1800, 240));
+        Texto("Titulo Sombra 2", portada, "TAHÚR GAME", fuenteTitulos, 210, negro, new Vector2(0, 243), new Vector2(1800, 240));
+        Texto("Titulo Sombra 1", portada, "TAHÚR GAME", fuenteTitulos, 210, Hex("5a3f17"), new Vector2(0, 249), new Vector2(1800, 240));
+        Texto("Titulo", portada, "TAHÚR GAME", fuenteTitulos, 210, mostaza, new Vector2(0, 255), new Vector2(1800, 240));
 
         var abajo = Texto("Mentirosos", portada, "MENTIROSOS", fuenteMaquina, 32, mostazaTenue, new Vector2(0, 130), new Vector2(1200, 50));
         abajo.characterSpacing = 40;

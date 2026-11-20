@@ -8,7 +8,7 @@ using UnityEditor.SceneManagement;
 // Sienta los 4 personajes animados en las sillas de la escena Bar y los conecta con la partida.
 // Cada uno sale de Blender/Personajes_<nombre>.blend exportado a Assets/Models/Personajes/<nombre>.fbx
 // (ya viene en la posición de su Puesto, con sus acciones: Descansar, Esperar, MiTurno, Jugar, Comer, Acusar y Ganar).
-// Menú: LIAR GAME > Colocar personajes en el bar. Se puede volver a correr: reemplaza el objeto "Personajes".
+// Menú: TAHÚR GAME > Colocar personajes en el bar. Se puede volver a correr: reemplaza el objeto "Personajes".
 public static class ConstructorPersonajes
 {
     const string carpeta = "Assets/Models/Personajes";
@@ -63,7 +63,7 @@ public static class ConstructorPersonajes
     // se hunde detrás del mostrador, que le tapa los pies
     const float hundirBartender = 0.13f;
 
-    [MenuItem("LIAR GAME/Colocar personajes en el bar")]
+    [MenuItem("TAHÚR GAME/Colocar personajes en el bar")]
     public static void Construir()
     {
         if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
@@ -135,7 +135,7 @@ public static class ConstructorPersonajes
 
     // Bartender detrás de la barra, mesero caminando con su bandeja, clientes en las mesas nuevas y tres jugando billar
     // (Personajes_Bartender/Mesero/Cliente/Clienta.blend). Van en su propio objeto "PersonalBar": no se mezclan con los jugadores. Se puede volver a correr.
-    [MenuItem("LIAR GAME/Colocar bartender y mesero")]
+    [MenuItem("TAHÚR GAME/Colocar bartender y mesero")]
     public static void ConstruirPersonal()
     {
         if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;

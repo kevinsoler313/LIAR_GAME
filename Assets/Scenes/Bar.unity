@@ -11145,7 +11145,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: LIAR GAME
+  m_text: TAHÚR GAME
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 19d53b12278b74f919c000b98e561fa8, type: 2}
   m_sharedMaterial: {fileID: -255874237164686939, guid: 19d53b12278b74f919c000b98e561fa8, type: 2}
@@ -21589,7 +21589,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: LIAR GAME
+  m_text: TAHÚR GAME
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 19d53b12278b74f919c000b98e561fa8, type: 2}
   m_sharedMaterial: {fileID: -255874237164686939, guid: 19d53b12278b74f919c000b98e561fa8, type: 2}
@@ -25772,7 +25772,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: LIAR GAME
+  m_text: TAHÚR GAME
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 19d53b12278b74f919c000b98e561fa8, type: 2}
   m_sharedMaterial: {fileID: -255874237164686939, guid: 19d53b12278b74f919c000b98e561fa8, type: 2}

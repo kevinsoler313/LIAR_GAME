@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // La baraja completa: qué cartas tiene y cuántas copias de cada una.
-[CreateAssetMenu(menuName = "LIAR GAME/Baraja", fileName = "Baraja")]
+[CreateAssetMenu(menuName = "TAHÚR GAME/Baraja", fileName = "Baraja")]
 public class Baraja : ScriptableObject
 {
     [System.Serializable]
